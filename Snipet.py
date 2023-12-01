@@ -1,8 +1,58 @@
+from icu_experiments.load_data import load_data_for_prediction
+from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.metrics import mean_squared_error
+from lightgbm import LGBMRegressor, Booster
+from sklearn.linear_model import LinearRegression
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import itertools
+from ivmodels import AnchorRegression
+from IPython.display import clear_output
+
 outcome = "hr"
 
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 regressors = ['lgbm', 'rf', 'ols', 'anchor']
 _data = load_data_for_prediction(sources,  outcome=outcome, log_transform=True)
+
+preprocessor_ols = ColumnTransformer(transformers=make_feature_preprocessing(missing_indicator=True)).set_output(transform="pandas") # Allow to preprocess subbsets of data differently
+
+
+#### ToDo: Make LGBM Categorical
+preprocessor_lgbm = ColumnTransformer(transformers=make_feature_preprocessing(missing_indicator=False)).set_output(transform="pandas") # Allow to preprocess subbsets of data differently
+
+
+anchor_columns = ['hospital_id']
+anchor_preprocessor = ColumnTransformer(
+        make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True) #preprocessing_steps
+    ).set_output(transform="pandas")
+
+pipeline_lgbm = Pipeline(steps=[
+    ('preprocessing', preprocessor_lgbm),
+    ('model', LGBMRegressor())
+])
+pipeline_rf = Pipeline(steps=[
+    ('preprocessing', preprocessor_lgbm),
+    ('model', LGBMRegressor())
+])
+pipeline_ols = Pipeline(steps=[
+    ('preprocessing', preprocessor_ols),
+    ('model', LinearRegression())
+])
+
+pipeline_anchor = Pipeline(steps=[
+    ('preprocessing', anchor_preprocessor),
+    ('model', AnchorRegression())
+])
+
+outcome = "hr"
+
 pipelines = {'lgbm': pipeline_lgbm,
              'rf': pipeline_rf,
              'ols': pipeline_ols,
