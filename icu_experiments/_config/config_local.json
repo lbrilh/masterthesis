@@ -1,0 +1,11 @@
+{
+    "mlflow": {
+        "tracking_uri": "file:/Users/mlondschien/code/icu-experiments/mlflow_results",
+        "experiment_ids": {
+            "linear_anchor": "519748658229494058",
+            "tuning": "664559941985463110",
+            "kidney": "339940980075383055",
+            "hr": "519748658229494058"
+        }
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "mlflow": {
+        "tracking_uri": "file:/cluster/work/math/lmalte/mlflow",
+        "experiment_ids": {
+        }
+    }
+}

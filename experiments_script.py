@@ -1,20 +1,5 @@
-import sys
-import os 
-# getting the name of the directory
-# where the this file is present.
-current = os.path.dirname(os.path.realpath(__file__))
-# Getting the parent directory name
-# where the current directory is present.
-parent = os.path.dirname(current)
- 
-# adding the parent directory to 
-# the sys.path.
-sys.path.append(parent + '/icu-experiments')
-sys.path.append(parent + '/ivmodels')
-
-from icu_experiments.load_data import load_data_for_prediction
+import os
 from sklearn.pipeline import Pipeline
-from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 from sklearn.metrics import mean_squared_error
 import pandas as pd
@@ -23,9 +8,7 @@ import matplotlib.pyplot as plt
 import itertools
 import pickle
 from numpy.linalg import eig, det
-from plotting import plot_tuning
-from set_up import sources, grid_search, evaluation_on_target, training_source, methods, hyper_parameters, n_fine_tuning, Regressor, Preprocessing, anchor_columns, model, outcome, n_seeds
-
+from set_up import *
 
 assert model in methods
 
@@ -49,13 +32,12 @@ if model == 'lgbm' or model == 'rf':
 
 
 pipeline = Pipeline(steps=[
-    ('preprocessing', Preprocessing[model]),
-    ('model', Regressor[model])
+    ('preprocessing', Preprocessing),
+    ('model', Regressor)
 ])
 
 
-
-if grid_search == True: 
+if grid_search: 
     mse_grid_search = {}
     path_grid_results_model = model + '_grid_results.pkl'
     if os.path.exists(path_grid_results_model):
@@ -148,5 +130,7 @@ if evaluation_on_target:
         with open(path_results_model, 'wb') as data:
             pickle.dump(results, data)
             print(f'Data saved successfully to {path_results_model}\n')
+
+#plot_tuning(training_source, sources, methods)
 
 print('Script completed with no erros\n')
