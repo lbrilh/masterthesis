@@ -8,7 +8,7 @@ from anchor_boosting_lgbm import CustomizedAnchor
 
 
 
-model = 'anchor'
+model = 'model'
 outcome = 'hr'
 n_seeds = 10    
 

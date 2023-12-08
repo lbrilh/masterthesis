@@ -8,7 +8,9 @@ import matplotlib.pyplot as plt
 import itertools
 import pickle
 from numpy.linalg import eig, det
-from set_up import *
+from plotting import plotting
+from icu_experiments.load_data import load_data_for_prediction
+from set_up import grid_search, evaluation_on_target, hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing
 
 assert model in methods
 
@@ -131,6 +133,6 @@ if evaluation_on_target:
             pickle.dump(results, data)
             print(f'Data saved successfully to {path_results_model}\n')
 
-#plot_tuning(training_source, sources, methods)
+plotting(model=model, methods=methods, sources=sources, training_source=training_source)
 
 print('Script completed with no erros\n')
