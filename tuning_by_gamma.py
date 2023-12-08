@@ -7,7 +7,7 @@ from sklearn.compose import ColumnTransformer
 from ivmodels import AnchorRegression
 from icu_experiments.load_data import load_data_for_prediction
 from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
-from plotting import plotting
+from plotting import plotting, plot_tuning_by_gamma
 
 model = 'tuning_by_gamma'
 outcome = 'hr'
@@ -29,8 +29,10 @@ hyper_parameters ={
 }  
 
 sample_seeds = list(range(n_seeds))
-results = []
 
+plot_tuning_by_gamma(model='anchor', gammas=gammas, sources=sources, training_source=training_source)
+
+results = []
 
 # Check if data has already been processed 
 outcome_data_path = outcome + '_data.pkl'
@@ -89,4 +91,4 @@ for gamma in gammas:
 
 with open(path_results_model, 'wb') as data:
     pickle.dump(results, data)
-    print(f'Data saved successfully to {path_results_model}\n')\
+    print(f'Data saved successfully to {path_results_model}\n')
