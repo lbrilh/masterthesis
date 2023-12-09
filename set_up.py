@@ -9,16 +9,12 @@ from anchor_boosting_lgbm import CustomizedAnchor
 overwrite = True
 model = 'model'
 outcome = 'hr'
-n_seeds = 10    
-
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
-
 training_source = 'eicu'
-
 anchor_columns = ['hospital_id']
 
+n_seeds = 10    
 n_fine_tuning = [25, 50, 100, 200, 400, 800, 1600]
-
 
 grid_search = False
 evaluation_on_target = True
