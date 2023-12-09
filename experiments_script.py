@@ -1,31 +1,16 @@
-import os
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import itertools
-import pickle
 from numpy.linalg import eig, det
 from plotting import plotting
-from icu_experiments.load_data import load_data_for_prediction
 from set_up import grid_search, evaluation_on_target, hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing
+from data import load_data, results_exist, save_data
 
 assert model in methods
 
 
-# Check if data has already been processed 
-outcome_data_path = outcome + '_data.pkl'
-if os.path.exists(outcome_data_path):
-    print(f'The data file exists!')
-    with open(outcome_data_path, 'rb') as data: 
-        _data = pickle.load(data)
-else:
-    _data = load_data_for_prediction(sources,  outcome=outcome, log_transform=True)
-    with open(outcome_data_path, 'wb') as data:
-        pickle.dump(_data, data)
-print(f'Data loaded successfully: {outcome_data_path}\n')
+_data = load_data(outcome)
 
 
 if model == 'lgbm' or model == 'rf':
@@ -41,12 +26,7 @@ pipeline = Pipeline(steps=[
 
 if grid_search: 
     mse_grid_search = {}
-    path_grid_results_model = model + '_grid_results.pkl'
-    if os.path.exists(path_grid_results_model):
-        print(f'The GridCV file for {model} exists!')
-        with open(path_grid_results_model, 'rb') as results_data: 
-            model_grid_results = pickle.load(results_data)
-    else:
+    if not results_exist(model,grid=grid_search):
         if model in ['ols']:
             print(f'No hyperparameters for {model}. Skip GridCV')
         else:
@@ -71,19 +51,12 @@ if grid_search:
                         'MSE on {source}': mse
                         }
             print(f'Completed {model} run on {source}')
-        with open(path_grid_results_model, 'wb') as data:
-            pickle.dump(mse_grid_search, data)
-    print(f'GridCV for {model} successful\n')
-
+        save_data(model, mse_grid_search, grid=grid_search)
 
 
 if evaluation_on_target:
     path_results_model = model + '_results.pkl'
-    if os.path.exists(path_results_model):
-        print(f'{model} has already been evaluated!')
-        with open(path_results_model, 'rb') as data: 
-            _data = pickle.load(data)
-    else:
+    if not results_exist(model, eval=evaluation_on_target)
         sample_seeds = list(range(n_seeds))
         results = []
         if model != 'ols':
@@ -129,9 +102,7 @@ if evaluation_on_target:
                     'mse target': mse_evaluation
                 })
                 print(f'finished on source {source} using {model}\n')
-        with open(path_results_model, 'wb') as data:
-            pickle.dump(results, data)
-            print(f'Data saved successfully to {path_results_model}\n')
+        save_data(model, results, eval=evaluation_on_target)
 
 plotting(model=model, methods=methods, sources=sources, training_source=training_source)
 
