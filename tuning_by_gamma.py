@@ -22,7 +22,7 @@ if overwrite:
         ('preprocessing', Preprocessing),
         ('model', Regressor)
         ])
-    hyper_parameters ={
+    hyperparameters ={
         'instrument_regex': ['anchor'],
         'alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1],
         'l1_ratio': [0, 0.2, 0.5, 0.8, 1]
@@ -30,11 +30,11 @@ if overwrite:
     sample_seeds = list(range(n_seeds))
     results = []
     print(f"Hyperparametrs will be chosen via performance on fine-tuning set from target \n")
-    hyper_para_combinations = list(itertools.product(*hyper_parameters.values()))
-    num_combinations = len(hyper_para_combinations)
+    hyperpara_combinations = list(itertools.product(*hyperparameters.values()))
+    num_combinations = len(hyperpara_combinations)
     for gamma in gammas: 
-        for comb, hyper_para_set in enumerate(itertools.product(*hyper_parameters.values())):
-            hyper_para = dict(zip(hyper_parameters.keys(), hyper_para_set))            
+        for comb, hyper_para_set in enumerate(itertools.product(*hyperparameters.values())):
+            hyper_para = dict(zip(hyperparameters.keys(), hyper_para_set))            
             pipeline.named_steps['model'].set_params(**hyper_para, gamma=gamma)
             pipeline.fit(_data[training_source]['train'], _data[training_source]['train']['outcome'])
             for source in sources: 
