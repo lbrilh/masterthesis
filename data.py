@@ -17,21 +17,15 @@ def load_data(outcome):
     print(f'Data loaded successfully: {outcome_data_path}\n')
     return _data
 
-def save_data(model, results, grid=False, eval=False): 
-    if grid: 
-        path = model + '_grid_results.pkl'
-    elif eval: 
-        path = model + '_results.pkl'  
-    with open(path, 'wb') as data:
-        pickle.dump(results, data)
-    print(f'Results stored for {model} successful')
 
-def results_exist(model, grid=False, eval=False):
-    if grid: 
-        path = model + '_grid_results.pkl'
-    elif eval: 
-        path = model + '_results.pkl'
+def results_exist(path):
     if os.path.exists(path):
-        print(f'The result file for {model} exists!')
+        print(f'The result file exists!')
         return True
     return False
+
+
+def save_data(path,results): 
+    with open(path, 'wb') as data:
+        pickle.dump(results, data)
+    print(f'Results stored successful')
