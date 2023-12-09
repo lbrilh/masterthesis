@@ -1,15 +1,9 @@
+from data import retrieve_paths, load_data_plotting
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-import glob
-import re
-import os 
 
 def plotting(model: str, methods: list[str], sources: list[str], training_source: str, pattern=r'*_results.pkl') -> None:
-
-    # Retrieve a list of file paths that match the pattern
-    file_paths = glob.glob(pattern)
+    file_paths=retrieve_paths(pattern)
     print(file_paths)
 
     for source in sources:
@@ -21,8 +15,7 @@ def plotting(model: str, methods: list[str], sources: list[str], training_source
             plt.xlabel("Number of tuning Points")
             plt.ylabel("MSE")
             for model in methods: 
-                with open(f'{model}_results.pkl', 'rb') as data:
-                    _data=pickle.load(data)
+                _data=load_data_plotting(model)
                 df = pd.DataFrame(_data)
                 results = df[df['target']==source].groupby(by=['n_test','comb_nr'])[['mse tuning', 'mse target']].mean().sort_index().reset_index()
                 min_mse_eval_indices = results.groupby('n_test')['mse tuning'].idxmin()
@@ -34,13 +27,11 @@ def plotting(model: str, methods: list[str], sources: list[str], training_source
                 plt.plot(mse_targets['n_test'], mse_targets['mse target'], '-o', label=model, linewidth=2)
             plt.legend()
     plt.show()
-    plt.savefig("Anchor")
     print('Script successfully executed')
 
 
 def plot_tuning_by_gamma(sources: list[str], training_source: str, n_tuning_points: list[int]) -> None:
-    with open('tuning_by_gamma_results.pkl','rb') as data:
-        _data=pickle.load(data)
+    _data=load_data_plotting(tuning_by_gamma)
     _df=pd.DataFrame(_data)
     _df.drop(columns=['parameters','sample_seed','comb_nr', 'mse tuning'], inplace=True)    
     for source in sources:

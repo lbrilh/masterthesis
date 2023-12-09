@@ -49,7 +49,7 @@ if not results_exist(path=model+'_grid_results.pkl'):
                     'MSE on {source}': mse
                     }
         print(f'Completed {model} run on {source}')
-    save_data(path=model+'_grid_results.pkl', results=mse_grid_search)
+    save_data(path=f'{model}_grid_results.pkl', results=mse_grid_search)
 
 
 
@@ -99,7 +99,7 @@ if not results_exist(path=model+'_results.pkl')
                 'mse target': mse_evaluation
             })
             print(f'finished on source {source} using {model}\n')
-    save_data(path=model+'_results.pkl',results=results)
+    save_data(path=f'{model}_results.pkl',results=results)
 
 
 plotting(model=model, methods=methods, sources=sources, training_source=training_source)

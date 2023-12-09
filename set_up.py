@@ -3,7 +3,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression, Ridge
 from lightgbm import LGBMRegressor
 from ivmodels.anchor_regression import AnchorRegression
-from anchor_boosting_lgbm import CustomizedAnchor
+from methods import CustomizedAnchor
 
 
 overwrite = True
