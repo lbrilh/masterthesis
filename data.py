@@ -1,6 +1,6 @@
 from icu_experiments.load_data import load_data_for_prediction
 import os
-import pickel
+import pickle
 
 
 def load_data(outcome):

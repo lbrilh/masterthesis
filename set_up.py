@@ -1,4 +1,3 @@
-from icu_experiments.load_data import load_data_for_prediction
 from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression, Ridge
@@ -7,7 +6,7 @@ from ivmodels.anchor_regression import AnchorRegression
 from anchor_boosting_lgbm import CustomizedAnchor
 
 
-overwrite = False
+overwrite = True
 model = 'model'
 outcome = 'hr'
 n_seeds = 10    
@@ -103,11 +102,3 @@ elif model=='anchor_boost':
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
-elif model=='tuning_anchor_by_gamma':
-    gammas = [1, 3.16, 10, 31.6, 100, 316, 1000, 3162, 10000]
-
-hyper_parameters ={
-    'instrument_regex': ['anchor'],
-    'alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1],
-    'l1_ratio': [0, 0.2, 0.5, 0.8, 1]
-}  
