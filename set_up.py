@@ -24,7 +24,9 @@ methods = [
     'ridge',
     'lgbm',
     'rf',
-    'anchor',
+    'anchor'
+]
+boosting_methods=[
     'anchor_boost'
 ]
 

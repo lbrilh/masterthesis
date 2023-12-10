@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 def plotting(model: str, methods: list[str], sources: list[str], training_source: str, pattern=r'*_results.pkl'):
     file_paths=retrieve_paths(pattern)
     print(file_paths)
-
     for source in sources:
         if source==training_source:
             print('Lorem Ipsum')
