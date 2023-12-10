@@ -2,7 +2,7 @@ from sklearn.base import BaseEstimator, RegressorMixin
 from lightgbm import LGBMRegressor
 from ivmodels.anchor_regression import AnchorRegression
 
-class CustomizedAnchor(BaseEstimator, RegressorMixin):
+class AnchorBoost(BaseEstimator, RegressorMixin):
     def __init__(self, anchor_params=None, lgbm_params=None):
         # Initialize parameters
         self.anchor_params = anchor_params if anchor_params is not None else {}

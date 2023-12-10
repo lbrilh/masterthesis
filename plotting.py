@@ -2,7 +2,7 @@ from data import retrieve_paths, load_data_plotting
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plotting(model: str, methods: list[str], sources: list[str], training_source: str, pattern=r'*_results.pkl') -> None:
+def plotting(model: str, methods: list[str], sources: list[str], training_source: str, pattern=r'*_results.pkl'):
     file_paths=retrieve_paths(pattern)
     print(file_paths)
 
@@ -30,22 +30,19 @@ def plotting(model: str, methods: list[str], sources: list[str], training_source
     print('Script successfully executed')
 
 
-def plot_tuning_by_gamma(sources: list[str], training_source: str, n_tuning_points: list[int]) -> None:
-    _data=load_data_plotting(tuning_by_gamma)
+def plot_tuning_by_gamma(sources: list[str], training_source: str, n_tuning_points: list[int]):
+    _data=load_data_plotting('tuning_by_gamma')
     _df=pd.DataFrame(_data)
-    _df.drop(columns=['parameters','sample_seed','comb_nr', 'mse tuning'], inplace=True)    
     for source in sources:
-        if not source==training_sourceS: 
-            df = _df
-            df.drop(columns=['target'],inplace=True)
-            df=df.groupby(by=['n_test','gamma']).mean().reset_index()
+        if not source==training_source: 
+            results = _df[_df['target']==source].groupby(by=['n_test','gamma'])[['mse tuning', 'mse target']].mean().sort_index().reset_index()
             plt.figure(figsize=(10, 6))
             plt.title(f"MSE vs gamma on {source} with parameter training on {training_source}")
-            plt.xlabel(f"\gamma")
+            plt.xlabel("gamma")
             plt.ylabel("MSE")
             for n in n_tuning_points:
-                df_=df[df['n_test']==n]
-                plt.plot(df_['gamma'],df_['mse target'], '-o', linewidth=2)
+                df=results[results['n_test']==n]
+                plt.plot(df['gamma'],df['mse target'], '-o', linewidth=2, label=f'n_test={n}')
             plt.legend()
             plt.show()
     print('Script successfully executed')

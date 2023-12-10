@@ -3,11 +3,11 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression, Ridge
 from lightgbm import LGBMRegressor
 from ivmodels.anchor_regression import AnchorRegression
-from methods import CustomizedAnchor
+from methods import AnchorBoost
 
 
-overwrite = True
-model = 'model'
+overwrite = False
+model = 'anchor_boost'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
@@ -94,7 +94,7 @@ elif model=='anchor':
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
 elif model=='anchor_boost':
-    Regressor=CustomizedAnchor()
+    Regressor=AnchorBoost()
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")

@@ -3,7 +3,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 import itertools
 from plotting import plotting
-from set_up import grid_search, evaluation_on_target, hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing
+from set_up import grid_search, evaluation_on_target, hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning
 from data import load_data, results_exist, save_data
 
 assert model in methods
@@ -23,7 +23,7 @@ pipeline = Pipeline(steps=[
 ])
 
 
-if not results_exist(path=model+'_grid_results.pkl'):
+if not results_exist(path=f'{model}_grid_results.pkl') and model!='anchor_boost':
     mse_grid_search = {}
     if model in ['ols']:
         print(f'No hyperparameters for {model}. Skip GridCV')
@@ -53,10 +53,10 @@ if not results_exist(path=model+'_grid_results.pkl'):
 
 
 
-if not results_exist(path=model+'_results.pkl')
+if not results_exist(path=f'{model}_results.pkl'):
     sample_seeds = list(range(n_seeds))
     results = []
-    if model != 'ols':
+    if model not in ['ols', 'anchor_boost']:
         print(f"Hyperparametrs for {model} will be chosen via performance on fine-tuning set from target \n")
         hyper_para_combinations = list(itertools.product(*hyper_parameters[model].values()))
         num_combinations = len(hyper_para_combinations)
@@ -99,6 +99,39 @@ if not results_exist(path=model+'_results.pkl')
                 'mse target': mse_evaluation
             })
             print(f'finished on source {source} using {model}\n')
+    elif model == 'anchor_boost':
+        hyper_para_combinations_anchor = list(itertools.product(*hyper_parameters[model]['anchor'].values()))
+        hyper_para_combinations_lgbm = list(itertools.product(*hyper_parameters[model]['lgbm'].values()))
+        num_combinations = len(hyper_para_combinations_anchor)*len(hyper_para_combinations_lgbm)
+        for comb1, hyper_para_set_anchor in enumerate(itertools.product(*hyper_parameters[model]['anchor'].values())):
+            hyper_para_anchor = dict(zip(hyper_parameters[model]['anchor'].keys(), hyper_para_set_anchor))    
+            for comb2, hyper_para_set_lgbm in enumerate(itertools.product(*hyper_parameters[model]['lgbm'].values())):
+                hyper_para_lgbm = dict(zip(hyper_parameters[model]['lgbm'].keys(), hyper_para_set_lgbm))     
+                pipeline.named_steps['model'].set_params(anchor_params= hyper_para_anchor, lgbm_params=hyper_para_lgbm)
+                pipeline.fit(_data[training_source]['train'], _data[training_source]['train']['outcome'])
+                for source in sources: 
+                    if source != training_source:
+                        for sample_seed in sample_seeds:      
+                            Xy_target_tuning = _data[source]["test"].sample(
+                            frac=1, random_state=sample_seed
+                            )
+                            Xy_target_evaluation = _data[source]['train']
+                            for n in n_fine_tuning:
+                                y_pred_tuning = pipeline.predict(Xy_target_tuning[:n])
+                                y_pred_evaluation = pipeline.predict(Xy_target_evaluation)
+                                mse_tuning = mean_squared_error(Xy_target_tuning['outcome'][:n], y_pred_tuning)
+                                mse_evaluation = mean_squared_error(Xy_target_evaluation['outcome'], y_pred_evaluation)
+                                results.append({
+                                        'comb_nr': comb1+comb2,
+                                        'parameters anchor': hyper_para_anchor,
+                                        'parameters lgbm': hyper_para_lgbm, 
+                                        "target": source,
+                                        "n_test": n,
+                                        "sample_seed": sample_seed,
+                                        'mse tuning': mse_tuning,
+                                        'mse target': mse_evaluation
+                                    })
+                            print(f'finished combination {comb1+comb2+1} from {num_combinations} with sample {sample_seed} on source {source} using {model}')
     save_data(path=f'{model}_results.pkl',results=results)
 
 
