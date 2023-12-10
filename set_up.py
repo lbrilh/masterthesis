@@ -24,7 +24,8 @@ methods = [
     'ridge',
     'lgbm',
     'rf',
-    'anchor'
+    'anchor',
+    'lgbm_refit'
 ]
 boosting_methods=[
     'anchor_boost'
@@ -56,6 +57,9 @@ hyper_parameters = {
         'instrument_regex': ['anchor'],
         'alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1],
         'l1_ratio': [0, 0.2, 0.5, 0.8, 1]
+    },
+    'lgbm_refit':{
+        "decay_rate": [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
     },
     'anchor_boost': {
         'anchor': {
@@ -89,12 +93,17 @@ elif model=='lgbm' or model=='rf':
     Regressor=LGBMRegressor()
     Preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
-                                    ).set_output(transform="pandas"),
+                                    ).set_output(transform="pandas")
 elif model=='anchor':
     Regressor=AnchorRegression()
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
+elif model=='lgbm_refig':
+    Regressor = RefitLGBMRegressorCV()
+    Preprocessing=ColumnTransformer(transformers=
+                                    make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
+                                    ).set_output(transform="pandas")    
 elif model=='anchor_boost':
     Regressor=AnchorBoost()
     Preprocessing=ColumnTransformer(transformers=
