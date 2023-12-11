@@ -17,7 +17,7 @@ def plotting(model: str, methods: list[str], sources: list[str], training_source
             _data=load_data_plotting(model)
             df = pd.DataFrame(_data)
             group_columns = ["target", "n_test", "sample_seed"]
-            metric='mse tuning' #could be also mse target
+            metric='mse tuning'
             df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
             df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
             df = df.drop(columns=f"{metric}_min")
@@ -32,16 +32,22 @@ def plotting(model: str, methods: list[str], sources: list[str], training_source
 def plot_tuning_by_gamma(sources: list[str], training_source: str, n_tuning_points: list[int]):
     _data=load_data_plotting('tuning_by_gamma')
     _df=pd.DataFrame(_data)
+    group_columns = ["target", "n_test", "sample_seed", "gamma"]
+    metric='mse tuning' #could be also mse target
+    _df[f"{metric}_min"] = _df.groupby(group_columns)[metric].transform("min")
+    _df = _df[lambda x: x[metric].eq(x[f"{metric}_min"])]
+    _df = _df.drop(columns=f"{metric}_min")
+    _df.sort_values(group_columns,inplace=True)
     for source in sources:
         if not source==training_source: 
-            results = _df[_df['target']==source].groupby(by=['n_test','gamma'])[['mse tuning', 'mse target']].mean().sort_index().reset_index()
             plt.figure(figsize=(10, 6))
             plt.title(f"MSE vs gamma on {source} with parameter training on {training_source}")
             plt.xlabel("gamma")
             plt.ylabel("MSE")
             for n in n_tuning_points:
-                df=results[results['n_test']==n]
-                plt.plot(df['gamma'],df['mse target'], '-o', linewidth=2, label=f'n_test={n}')
+                df=_df[lambda x: x['target'].eq(source) & x['n_test'].eq(n)].groupby(by=['gamma'])[['mse target']].mean()
+                print(df)
+                plt.plot(_df['gamma'].unique(),df['mse target'], '-o', linewidth=2, label=f'n_test={n}')
             plt.legend()
-            plt.show()
+    plt.show()
     print('Script successfully executed')
