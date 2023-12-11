@@ -2,8 +2,7 @@ from icu_experiments.preprocessing import make_feature_preprocessing, make_ancho
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression, Ridge
 from lightgbm import LGBMRegressor
-from ivmodels.anchor_regression import AnchorRegression
-from methods import AnchorBoost
+from methods import AnchorBoost, AnchorCV, RefitLGBMRegressorCV
 
 
 overwrite = False
@@ -95,7 +94,7 @@ elif model=='lgbm' or model=='rf':
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
                                     ).set_output(transform="pandas")
 elif model=='anchor':
-    Regressor=AnchorRegression()
+    Regressor=AnchorCV()
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")

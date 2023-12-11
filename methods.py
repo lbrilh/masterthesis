@@ -1,6 +1,63 @@
 from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.model_selection import KFold
 from lightgbm import LGBMRegressor
 from ivmodels.anchor_regression import AnchorRegression
+import pandas as pd
+import numpy as np
+import copy
+
+
+class CVMixin:
+    """Mixin for models, adding a `fit_predict_cv` method."""
+
+    def __init__(self, cv=5, **kwargs):
+        super().__init__(**kwargs)
+        self.cv = cv
+
+    def fit_predict_cv(self, X, y):
+        """
+        Fit the model and predict the outcome using cross-validation.
+
+        At the end, this fits the model itself on the whole data.
+        """
+        yhat = np.zeros(len(y), dtype=float)
+        for train_idx, val_idx in KFold(n_splits=self.cv).split(X):
+            if isinstance(X, pd.DataFrame):
+                X_train, y_train, X_val = (
+                    X.iloc[train_idx],
+                    y.iloc[train_idx],
+                    X.iloc[val_idx],
+                )
+            else:
+                X_train, y_train, X_val = X[train_idx], y[train_idx], X[val_idx]
+
+            self.fit(X_train, y_train)
+            yhat[val_idx] = self.predict(X_val)
+
+        self.fit(X, y)
+        return yhat
+    
+
+class AnchorCV(CVMixin,AnchorRegression):
+    """
+    Anchor Regressor that allows CV.
+
+    Parameters
+    ----------
+    gamma: float
+
+    instrument_regex: str
+
+    alpha: float
+
+    l1_ratio: flaot
+
+    cv : int
+        Number of folds for cross-validation.
+    """
+
+    def __init__(self, gamma, instrument_regex, alpha, l1_ratio, cv=5):
+        super().__init__(gamma=gamma, instrument_regex=instrument_regex, alpha=alpha, l1_ratio=l1_ratio, cv=cv)   
 
 
 class AnchorBoost(BaseEstimator, RegressorMixin):
@@ -34,38 +91,7 @@ class AnchorBoost(BaseEstimator, RegressorMixin):
 
         # Combine predictions
         return anchor_predictions + lgbm_predictions
-        
-
-class CVMixin:
-    """Mixin for models, adding a `fit_predict_cv` method."""
-
-    def __init__(self, cv=5, **kwargs):
-        super().__init__(**kwargs)
-        self.cv = cv
-
-    def fit_predict_cv(self, X, y):
-        """
-        Fit the model and predict the outcome using cross-validation.
-
-        At the end, this fits the model itself on the whole data.
-        """
-        yhat = np.zeros(len(y), dtype=float)
-        for train_idx, val_idx in KFold(n_splits=self.cv).split(X):
-            if isinstance(X, pd.DataFrame):
-                X_train, y_train, X_val = (
-                    X.iloc[train_idx],
-                    y.iloc[train_idx],
-                    X.iloc[val_idx],
-                )
-            else:
-                X_train, y_train, X_val = X[train_idx], y[train_idx], X[val_idx]
-
-            self.fit(X_train, y_train)
-            yhat[val_idx] = self.predict(X_val)
-
-        self.fit(X, y)
-        return yhat
-
+    
 
 class RefitLGBMRegressor(BaseEstimator):
     """
@@ -84,7 +110,7 @@ class RefitLGBMRegressor(BaseEstimator):
         self.decay_rate = decay_rate
 
     def fit(self, X, y):  # noqa D
-        if not isinstance(self.prior, lgb.LGBMRegressor):
+        if not isinstance(self.prior, LGBMRegressor):
             raise ValueError("Prior must be a LGBMRegressor")
 
         self.model = copy.deepcopy(self.prior)
