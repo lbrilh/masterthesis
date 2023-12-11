@@ -47,10 +47,13 @@ def retrieve_paths(pattern):
     return file_paths
 
 
-def load_data_plotting(model):
-    current_directory = os.getcwd()
-    relative_path = os.path.join('Pickle', f'{model}_results.pkl')
-    file_path = os.path.join(current_directory, relative_path)
+def load_data_plotting(model=None,path=None):
+    if path:
+        file_path=path
+    else: 
+        current_directory = os.getcwd()
+        relative_path = os.path.join('Pickle', f'{model}_results.pkl')
+        file_path = os.path.join(current_directory, relative_path)
     with open(file_path, 'rb') as data:
         _data=pickle.load(data)
     return _data

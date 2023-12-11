@@ -7,7 +7,7 @@ from ivmodels.anchor_regression import AnchorRegression
 
 
 overwrite = False
-model = 'anchor_lgbm'
+model = 'lgbm'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
@@ -20,12 +20,12 @@ grid_search = False
 evaluation_on_target = True
 
 methods = [
-    'ols',
+    #'ols',
     'ridge',
     'lgbm',
     'rf',
     'anchor',
-    'lgbm_refit'
+    #'lgbm_refit'
 ]
 boosting_methods=[
     'anchor_lgbm'
