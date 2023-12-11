@@ -99,7 +99,7 @@ elif model=='anchor':
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
-elif model=='lgbm_refig':
+elif model=='lgbm_refit':
     Regressor = RefitLGBMRegressorCV()
     Preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)

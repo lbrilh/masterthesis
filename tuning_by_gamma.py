@@ -61,7 +61,7 @@ if overwrite:
                             })
                         print(f'finished combination {comb+1} from {num_combinations} with sample {sample_seed} on source {source} with gamma: {gamma}')
     
-    save_data(path='tuning_by_gamma_results.pkl',results=results)
+    save_data(path='anchor_results.pkl',results=results)
 
 
 plot_tuning_by_gamma(sources=sources, training_source=training_source, n_tuning_points=n_fine_tuning)

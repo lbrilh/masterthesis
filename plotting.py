@@ -46,6 +46,7 @@ def plot_tuning_by_gamma(sources, training_source, n_tuning_points):
     _df.sort_values(group_columns,inplace=True)
     for source in sources:
         if not source==training_source: 
+            print(f'Target: {source}')
             plt.figure(figsize=(10, 6))
             plt.title(f"MSE vs gamma on {source} with parameter training on {training_source}")
             plt.xlabel("gamma")
@@ -54,6 +55,8 @@ def plot_tuning_by_gamma(sources, training_source, n_tuning_points):
                 df=_df[lambda x: x['target'].eq(source) & x['n_test'].eq(n)].groupby(by=['gamma'])[['mse target']].mean().reset_index()
                 print(df)
                 plt.plot(df['gamma'].unique(),df['mse target'], '-o', linewidth=2, label=f'n_test={n}')
+                plt.xscale('log')
             plt.legend()
+            print('New source \n')
     plt.show()
     print('Script successfully executed')
