@@ -3,7 +3,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 import itertools
 from plotting import plotting
-from set_up import grid_search, evaluation_on_target, hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning, boosting_methods
+from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning, boosting_methods
 from data import load_data, results_exist, save_data
 
 

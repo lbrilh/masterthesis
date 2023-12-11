@@ -30,6 +30,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                     df.sort_values(group_columns,inplace=True)
                     df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
                     plt.plot(df['n_test'], df['mse target'], '-o', label=file, linewidth=2)
+                    plt.xscale('log')
                 plt.legend()
     plt.show()
     print('Script successfully executed')

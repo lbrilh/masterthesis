@@ -16,9 +16,6 @@ anchor_columns = ['hospital_id']
 n_seeds = 10    
 n_fine_tuning = [25, 50, 100, 200, 400, 800, 1600]
 
-grid_search = False
-evaluation_on_target = True
-
 methods = [
     #'ols',
     'ridge',
