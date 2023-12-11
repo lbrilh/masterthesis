@@ -42,8 +42,7 @@ def save_data(path,results):
 
 def retrieve_paths(pattern):
     current_directory = os.getcwd()
-    relative_path = os.path.join('Pickle',path)
-    file_path = os.path.join(current_directory, relative_path)
+    file_path = os.path.join(current_directory, 'Pickle')
     file_paths = glob.glob(os.path.join(file_path, pattern))
     return file_paths
 

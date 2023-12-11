@@ -2,11 +2,12 @@ from icu_experiments.preprocessing import make_feature_preprocessing, make_ancho
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression, Ridge
 from lightgbm import LGBMRegressor
-from methods import AnchorBoost, AnchorCV, RefitLGBMRegressorCV
+from methods import AnchorBoost, RefitLGBMRegressorCV
+from ivmodels.anchor_regression import AnchorRegression
 
 
 overwrite = False
-model = 'anchor_boost'
+model = 'lgbm'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
@@ -94,7 +95,7 @@ elif model=='lgbm' or model=='rf':
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
                                     ).set_output(transform="pandas")
 elif model=='anchor':
-    Regressor=AnchorCV()
+    Regressor=AnchorRegression()
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")

@@ -13,17 +13,17 @@ def plotting(model: str, methods: list[str], sources: list[str], training_source
             plt.title(f"MSE vs Number of tuning Data Points on {source} with parameter training on {training_source}")
             plt.xlabel("Number of tuning Points")
             plt.ylabel("MSE")
-            for model in methods: 
-                _data=load_data_plotting(model)
-                df = pd.DataFrame(_data)
-                results = df[df['target']==source].groupby(by=['n_test','comb_nr'])[['mse tuning', 'mse target']].mean().sort_index().reset_index()
-                min_mse_eval_indices = results.groupby('n_test')['mse tuning'].idxmin()
-                mse_targets = results.loc[min_mse_eval_indices][['n_test', 'comb_nr', 'mse target']]
-                if model=='anchor': 
-                    unique_df = df.drop_duplicates(subset=['comb_nr'])  
-                    for combination in mse_targets['comb_nr']:
-                        print(unique_df[unique_df['comb_nr']==combination][['parameters']])
-                plt.plot(mse_targets['n_test'], mse_targets['mse target'], '-o', label=model, linewidth=2)
+            #for model in methods: 
+            _data=load_data_plotting(model)
+            df = pd.DataFrame(_data)
+            group_columns = ["target", "n_test", "sample_seed"]
+            metric='mse tuning' #could be also mse target
+            df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
+            df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
+            df = df.drop(columns=f"{metric}_min")
+            df.sort_values(group_columns,inplace=True)
+            df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
+            plt.plot(df['n_test'], df['mse target'], '-o', label=model, linewidth=2)
             plt.legend()
     plt.show()
     print('Script successfully executed')
