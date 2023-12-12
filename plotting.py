@@ -32,6 +32,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                     plt.plot(df['n_test'], df['mse target'], '-o', label=file, linewidth=2)
                     plt.xscale('log')
                 plt.legend()
+            plt.savefig(f'Plots/{training_source} on {source}')
     plt.show()
     print('Script successfully executed')
 
