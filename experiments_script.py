@@ -10,7 +10,7 @@ from data import load_data, results_exist, save_data
 _data = load_data(outcome)
 
 
-if model == 'lgbm' or model == 'rf':
+if model == 'lgbm' or model == 'rf' or model == 'lgbm_refit':
     sex_index = _data[training_source]['train'].columns.get_loc('sex')
     _data[training_source]['train']['sex'] = _data[training_source]['train']['sex'].astype('category')
 

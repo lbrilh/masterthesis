@@ -7,7 +7,7 @@ from ivmodels.anchor_regression import AnchorRegression
 
 
 overwrite = False
-model = 'lgbm'
+model = 'lgbm_refit'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
@@ -22,7 +22,7 @@ methods = [
     'lgbm',
     'rf',
     'anchor',
-    #'lgbm_refit'
+    'lgbm_refit'
 ]
 boosting_methods=[
     'anchor_lgbm'
@@ -56,8 +56,14 @@ hyper_parameters = {
         'l1_ratio': [0, 0.2, 0.5, 0.8, 1]
     },
     'lgbm_refit':{
-        "decay_rate": [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
-    },
+        'boosting_type': ['gbdt'],
+        "decay_rate": [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1],
+        'learning_rate': [0.01, 0.1, 0.3],
+        'n_estimators': [100, 800],
+        'num_leaves': [50, 200, 1024],
+        'feature_fraction': [0.5, 0.9],
+        'verbose': [-1]
+        },
     'anchor_lgbm': {
         'anchor': {
             'gamma': [1, 10, 100],
