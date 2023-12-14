@@ -4,7 +4,8 @@ import os
 import glob
 import pandas as pd
 
-def load_data(outcome):
+
+'''def load_data(outcome):
     current_directory = os.getcwd()
     relative_path = os.path.join('Parquet', f'{outcome}_data.parquet')
     file_path = os.path.join(current_directory, relative_path)
@@ -16,7 +17,7 @@ def load_data(outcome):
         data = pd.DataFrame(_data)
         data.to_parquet(f'{outcome}_data.parquet')
     print(f'Data loaded successfully: {file_path}\n')
-    return _data
+    return _data'''
 
 
 def results_exist(path):
