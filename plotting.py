@@ -15,26 +15,41 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
             for file in file_paths: 
                 _data=load_data_plotting(path=file)
                 df = pd.DataFrame(_data)
-                if 'grid' in file or 'tuning' in file:
-                    print('lorem ipsum need to be implemented')
-                    #print(df.head())
-                    #plt.axvline(x=df['MSE on {source}'], linestyle='--', label=file)
-                else: 
-                    parts=file.split('Pickle\\')
-                    parts2=parts[1].split('_results')
-                    group_columns = ["target", "n_test", "sample_seed"]
-                    if 'refit' in file:
-                        metric='mse target'
+                if 'tuning' not in file:
+                    if 'grid' in file:
+                        if 'ols' not in file: 
+                            parts=file.split('Pickle\\')
+                            parts2=parts[1].split('_grid')
+                            if 'rf' in file or 'lgbm' in file or 'ridge' in file: 
+                                print('lorem ipsum need to be implemented')
+                            else:
+                                group_columns = ["sample_seed"]
+                                metric='mse tuning'
+                                print(df.head())
+                                df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
+                                df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
+                                df = df.drop(columns=f"{metric}_min")
+                                df.sort_values(group_columns,inplace=True)
+                                df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
+                                plt.plot(df['mse target'], '--', label=parts2[0], linewidth=2)
+                                plt.xscale('log')
+                        #plt.axvline(x=df['MSE on {source}'], linestyle='--', label=file)
                     else: 
-                        metric='mse tuning'
-                    df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
-                    df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
-                    df = df.drop(columns=f"{metric}_min")
-                    df.sort_values(group_columns,inplace=True)
-                    df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
-                    plt.plot(df['n_test'], df['mse target'], '-o', label=parts2[0], linewidth=2)
-                    plt.xscale('log')
-                plt.legend()
+                        parts=file.split('Pickle\\')
+                        parts2=parts[1].split('_results')
+                        group_columns = ["target", "n_test", "sample_seed"]
+                        if 'refit' in file:
+                            metric='mse target'
+                        else: 
+                            metric='mse tuning'
+                        df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
+                        df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
+                        df = df.drop(columns=f"{metric}_min")
+                        df.sort_values(group_columns,inplace=True)
+                        df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
+                        plt.plot(df['n_test'], df['mse target'], '-o', label=parts2[0], linewidth=2)
+                        plt.xscale('log')
+            plt.legend()
             plt.savefig(f'Plots/{training_source} on {source}')
     plt.show()
     print('Script successfully executed')
