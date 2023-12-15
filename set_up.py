@@ -15,6 +15,7 @@ anchor_columns = ['hospital_id']
 
 n_seeds = 1    
 #### refit doesn't work with 25 and 50 points
+#### and ony using one seed --- otherwise get lgbm error
 n_fine_tuning = [200, 400, 800, 1600]
 
 methods = [
