@@ -7,7 +7,7 @@ from ivmodels.anchor_regression import AnchorRegression
 
 
 overwrite = False
-model = 'lgbm_refit'
+model = 'lgbm'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'

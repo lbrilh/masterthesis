@@ -4,11 +4,10 @@ from sklearn.metrics import mean_squared_error
 import itertools
 from plotting import plotting
 from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning, boosting_methods
-from data import results_exist, save_data
-from icu_experiments.load_data import load_data_for_prediction
+from data import results_exist, save_data, load_data
 
 
-_data = load_data_for_prediction(sources,  outcome=outcome, log_transform=True)
+_data = load_data(outcome=outcome)
 
 
 if model == 'lgbm' or model == 'rf' or model == 'lgbm_refit':

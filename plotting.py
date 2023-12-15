@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
     file_paths=retrieve_paths(pattern)
-    print(file_paths)
     for source in sources:
         if source==training_source:
             print('Lorem Ipsum')
@@ -14,7 +13,6 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
             plt.xlabel("Number of tuning Points")
             plt.ylabel("MSE")
             for file in file_paths: 
-                print(file)
                 _data=load_data_plotting(path=file)
                 df = pd.DataFrame(_data)
                 if 'grid' in file or 'tuning' in file:
@@ -22,6 +20,8 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                     #print(df.head())
                     #plt.axvline(x=df['MSE on {source}'], linestyle='--', label=file)
                 else: 
+                    parts=file.split('Pickle\\')
+                    parts2=parts[1].split('_results')
                     group_columns = ["target", "n_test", "sample_seed"]
                     metric='mse tuning'
                     df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
@@ -29,7 +29,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                     df = df.drop(columns=f"{metric}_min")
                     df.sort_values(group_columns,inplace=True)
                     df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
-                    plt.plot(df['n_test'], df['mse target'], '-o', label=file, linewidth=2)
+                    plt.plot(df['n_test'], df['mse target'], '-o', label=parts2[0], linewidth=2)
                     plt.xscale('log')
                 plt.legend()
             plt.savefig(f'Plots/{training_source} on {source}')
