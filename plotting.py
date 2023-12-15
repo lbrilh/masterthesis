@@ -19,9 +19,9 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                     if 'grid' in file:
                         if 'ols' not in file: 
                             parts=file.split('Pickle\\')
-                            parts2=parts[1].split('_grid')
+                            parts2=parts[1].split('_results')
                             if 'rf' in file or 'lgbm' in file or 'ridge' in file: 
-                                print('lorem ipsum need to be implemented')
+                                plt.plot(df[f'MSE on {source}'], '--', label=parts2[0], linewidth=2)
                             else:
                                 group_columns = ["sample_seed"]
                                 metric='mse tuning'
@@ -32,8 +32,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                                 df.sort_values(group_columns,inplace=True)
                                 df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
                                 plt.plot(df['mse target'], '--', label=parts2[0], linewidth=2)
-                                plt.xscale('log')
-                        #plt.axvline(x=df['MSE on {source}'], linestyle='--', label=file)
+                            plt.xscale('log')
                     else: 
                         parts=file.split('Pickle\\')
                         parts2=parts[1].split('_results')
