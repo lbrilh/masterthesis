@@ -3,8 +3,12 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 import itertools
 from plotting import plotting
-from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning, boosting_methods
+from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning
 from data import results_exist, save_data, load_data
+from methods import RefitLGBMRegressor
+from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
+from sklearn.compose import ColumnTransformer
+from lightgbm import LGBMRegressor
 
 
 _data = load_data(outcome=outcome)
@@ -20,7 +24,11 @@ pipeline = Pipeline(steps=[
     ('model', Regressor)
 ])
 
+boosting_methods=['anchor_lgbm']
+refit_methods=['lgbm_refit']
 
+
+'''
 if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting_methods:
     mse_grid_search = {}
     if model in ['ols']:
@@ -47,13 +55,13 @@ if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting
                     f'MSE on {source}': mse
                     }
         print(f'Completed {model} run on {source}')
-    save_data(path=f'{model}_grid_results.pkl', results=mse_grid_search)
+    save_data(path=f'{model}_grid_results.pkl', results=mse_grid_search)'''
 
 
 if not results_exist(path=f'{model}_results.pkl'):
     sample_seeds = list(range(n_seeds))
     results = []
-    if model not in ['ols'] and model not in boosting_methods:
+    if model in ['ridge','lgbm','rf','anchor']:
         print(f"Hyperparametrs for {model} will be chosen via performance on fine-tuning set from target \n")
         hyper_para_combinations = list(itertools.product(*hyper_parameters[model].values()))
         num_combinations = len(hyper_para_combinations)
@@ -111,7 +119,7 @@ if not results_exist(path=f'{model}_results.pkl'):
                 pipeline.fit(_data[training_source]['train'], _data[training_source]['train']['outcome'])
                 for source in sources: 
                     if source != training_source:
-                        for sample_seed in sample_seeds:      
+                        for sample_seed in sample_seeds: 
                             Xy_target_tuning = _data[source]["test"].sample(
                             frac=1, random_state=sample_seed
                             )
@@ -132,6 +140,52 @@ if not results_exist(path=f'{model}_results.pkl'):
                                         'mse target': mse_evaluation
                                     })
                 print(f'finished combination {comb_base+comb_booster+1} from {num_combinations} using {model}')
+    elif model in refit_methods: 
+        print(f"Hyperparametrs for {model} will be chosen via performance on fine-tuning set from target \n")
+        hyper_para_combinations = list(itertools.product(*hyper_parameters['lgbm'].values()))
+        num_combinations = len(hyper_para_combinations)
+        for comb, hyper_para_set in enumerate(itertools.product(*hyper_parameters['lgbm'].values())):
+            hyper_para = dict(zip(hyper_parameters['lgbm'].keys(), hyper_para_set))
+            pipeline_lgbm = Pipeline(steps=[
+                ('preprocessing', Preprocessing),
+                ('model', LGBMRegressor())
+            ])
+            pipeline_lgbm.named_steps['model'].set_params(**hyper_para)
+            pipeline_lgbm.fit(_data[training_source]['train'], _data[training_source]['train']['outcome'])
+            hyper_parameters_refit={
+                "decay_rate": [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
+            }
+            Preprocessing_lgbm=ColumnTransformer(transformers=
+                                    make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
+                                    ).set_output(transform="pandas")
+            pipeline = Pipeline(steps=[
+                ('preprocessing', Preprocessing_lgbm),
+                ('model', RefitLGBMRegressor())
+            ])
+            for hyper_para_set_refit in itertools.product(*hyper_parameters_refit.values()):
+                hyper_para_refit = dict(zip(hyper_parameters_refit.keys(), hyper_para_set_refit))
+                pipeline.named_steps['model'].set_params(prior=pipeline_lgbm.named_steps['model'], **hyper_para_refit)
+                for source in sources: 
+                    if source != training_source:
+                        for sample_seed in sample_seeds:  
+                            Xy_target_tuning = _data[source]["test"]
+                            Xy_target_evaluation = _data[source]['train']
+                            for n in n_fine_tuning:
+                                pipeline.fit(Xy_target_tuning[:n],Xy_target_tuning['outcome'][:n])
+                                y_pred_evaluation = pipeline.predict(Xy_target_evaluation)
+                                mse_evaluation = mean_squared_error(Xy_target_evaluation['outcome'], y_pred_evaluation)
+                                results.append({
+                                        'comb_nr': comb,
+                                        'parameters': hyper_para,
+                                        'decay_rate': hyper_para_refit['decay_rate'],
+                                        "target": source,
+                                        "n_test": n,
+                                        "sample_seed": sample_seed,
+                                        'mse target': mse_evaluation
+                                    })
+            print(f'finished combination {comb+1} from {num_combinations} using {model}')
+            
+
     save_data(path=f'{model}_results.pkl',results=results)
 
 

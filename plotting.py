@@ -23,7 +23,10 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                     parts=file.split('Pickle\\')
                     parts2=parts[1].split('_results')
                     group_columns = ["target", "n_test", "sample_seed"]
-                    metric='mse tuning'
+                    if 'refit' in file:
+                        metric='mse target'
+                    else: 
+                        metric='mse tuning'
                     df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
                     df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
                     df = df.drop(columns=f"{metric}_min")

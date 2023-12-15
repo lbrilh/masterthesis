@@ -7,14 +7,15 @@ from ivmodels.anchor_regression import AnchorRegression
 
 
 overwrite = False
-model = 'lgbm'
+model = 'lgbm_refit'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
 anchor_columns = ['hospital_id']
 
-n_seeds = 10    
-n_fine_tuning = [25, 50, 100, 200, 400, 800, 1600]
+n_seeds = 1    
+#### refit doesn't work with 25 and 50 points
+n_fine_tuning = [200, 400, 800, 1600]
 
 methods = [
     #'ols',
@@ -56,13 +57,8 @@ hyper_parameters = {
         'l1_ratio': [0, 0.2, 0.5, 0.8, 1]
     },
     'lgbm_refit':{
-        'boosting_type': ['gbdt'],
         "decay_rate": [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1],
-        'learning_rate': [0.01, 0.1, 0.3],
-        'n_estimators': [100, 800],
-        'num_leaves': [50, 200, 1024],
-        'feature_fraction': [0.5, 0.9],
-        'verbose': [-1]
+        "cv": [0]
         },
     'anchor_lgbm': {
         'anchor': {
@@ -92,7 +88,7 @@ elif model=='ridge':
     Preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
-elif model=='lgbm' or model=='rf':
+elif model=='lgbm' or model=='rf' or model=='lgbm_refit':
     Regressor=LGBMRegressor()
     Preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
@@ -102,11 +98,6 @@ elif model=='anchor':
     Preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
-elif model=='lgbm_refit':
-    Regressor = RefitLGBMRegressorCV()
-    Preprocessing=ColumnTransformer(transformers=
-                                    make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
-                                    ).set_output(transform="pandas")    
 elif model=='anchor_lgbm':
     Regressor=AnchorBoost()
     Preprocessing=ColumnTransformer(transformers=
