@@ -29,7 +29,7 @@ refit_methods=['lgbm_refit']
 
 
 if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting_methods:
-    mse_grid_search = {}
+    mse_grid_search = []
     if model in ['ols']:
         print(f'No hyperparameters for {model}. Skip GridCV')
     else:
@@ -46,12 +46,14 @@ if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting
             if model not in ['ols']:
                 mse_grid_search.append({
                     'parameters': search.best_params_,
-                    f'MSE on {source}': mse
+                    'target': source,
+                    'MSE': mse
                     })
             else: 
                 mse_grid_search.append({
                     'parameters': None,
-                    f'MSE on {source}': mse
+                    'target': source,
+                    'MSE': mse
                     })
         print(f'Completed {model} run on {source}')
     save_data(path=f'{model}_grid_results.pkl', results=mse_grid_search)

@@ -8,7 +8,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
         if source==training_source:
             print('Lorem Ipsum')
         else: 
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(10, 10))
             plt.title(f"MSE vs Number of tuning Data Points on {source} with parameter training on {training_source}")
             plt.xlabel("Number of tuning Points")
             plt.ylabel("MSE")
@@ -20,19 +20,15 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                         if 'ols' not in file: 
                             parts=file.split('Pickle\\')
                             parts2=parts[1].split('_results')
-                            if 'rf' in file or 'lgbm' in file or 'ridge' in file: 
-                                plt.plot(df[f'MSE on {source}'], '--', label=parts2[0], linewidth=2)
-                            else:
-                                group_columns = ["sample_seed"]
-                                metric='mse tuning'
-                                print(df.head())
-                                df[f"{metric}_min"] = df.groupby(group_columns)[metric].transform("min")
-                                df = df[lambda x: x[metric].eq(x[f"{metric}_min"])]
-                                df = df.drop(columns=f"{metric}_min")
-                                df.sort_values(group_columns,inplace=True)
-                                df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
-                                plt.plot(df['mse target'], '--', label=parts2[0], linewidth=2)
-                            plt.xscale('log')
+                            if 'rf' in file:
+                                df=df[lambda x: x['target'].eq(source)]
+                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='purple', label=parts2[0], linewidth=2) 
+                            if 'lgbm' in file:
+                                df=df[lambda x: x['target'].eq(source)]
+                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='red', label=parts2[0], linewidth=2) 
+                            if 'ridge' in file:
+                                df=df[lambda x: x['target'].eq(source)]
+                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='brown', label=parts2[0], linewidth=2) 
                     else: 
                         parts=file.split('Pickle\\')
                         parts2=parts[1].split('_results')
@@ -47,8 +43,8 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                         df.sort_values(group_columns,inplace=True)
                         df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
                         plt.plot(df['n_test'], df['mse target'], '-o', label=parts2[0], linewidth=2)
-                        plt.xscale('log')
-            plt.legend()
+                    plt.xscale('log')
+                plt.legend()
             plt.savefig(f'Plots/{training_source} on {source}')
     plt.show()
     print('Script successfully executed')
