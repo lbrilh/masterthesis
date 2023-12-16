@@ -7,13 +7,13 @@ from ivmodels.anchor_regression import AnchorRegression
 
 
 overwrite = False
-model = 'ridge'
+model = 'lgbm'
 outcome = 'hr'
 sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
 anchor_columns = ['hospital_id']
 
-n_seeds = 1    
+n_seeds = 10    
 #### refit doesn't work with 25 and 50 points
 #### and ony using one seed --- otherwise get lgbm error
 n_fine_tuning = [25, 50, 100, 200, 400, 800, 1600]

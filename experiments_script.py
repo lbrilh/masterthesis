@@ -44,15 +44,15 @@ if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting
         if source != training_source:
             mse = mean_squared_error(_data[source]['train']['outcome'], pipeline.predict(_data[source]['train']))
             if model not in ['ols']:
-                mse_grid_search[model] = {
+                mse_grid_search.append({
                     'parameters': search.best_params_,
                     f'MSE on {source}': mse
-                    }
+                    })
             else: 
-                mse_grid_search[model] = {
+                mse_grid_search.append({
                     'parameters': None,
                     f'MSE on {source}': mse
-                    }
+                    })
         print(f'Completed {model} run on {source}')
     save_data(path=f'{model}_grid_results.pkl', results=mse_grid_search)
 
@@ -122,22 +122,23 @@ if not results_exist(path=f'{model}_results.pkl'):
                             Xy_target_tuning = _data[source]["test"].sample(
                             frac=1, random_state=sample_seed
                             )
-                            Xy_target_evaluation = _data[source]['train']
-                            for n in n_fine_tuning:
-                                y_pred_tuning = pipeline.predict(Xy_target_tuning[:n])
-                                y_pred_evaluation = pipeline.predict(Xy_target_evaluation)
-                                mse_tuning = mean_squared_error(Xy_target_tuning['outcome'][:n], y_pred_tuning)
-                                mse_evaluation = mean_squared_error(Xy_target_evaluation['outcome'], y_pred_evaluation)
-                                results.append({
-                                        'comb_nr': comb_base+comb_booster,
-                                        'parameters anchor': hyperparameter_base,
-                                        'parameters lgbm': hyperparameter_booster, 
-                                        "target": source,
-                                        "n_test": n,
-                                        "sample_seed": sample_seed,
-                                        'mse tuning': mse_tuning,
-                                        'mse target': mse_evaluation
-                                    })
+                            if Xy_target_tuning.dropna(axis=1).shape[1] == Xy_target_tuning.shape[1]:
+                                Xy_target_evaluation = _data[source]['train']
+                                for n in n_fine_tuning:
+                                    y_pred_tuning = pipeline.predict(Xy_target_tuning[:n])
+                                    y_pred_evaluation = pipeline.predict(Xy_target_evaluation)
+                                    mse_tuning = mean_squared_error(Xy_target_tuning['outcome'][:n], y_pred_tuning)
+                                    mse_evaluation = mean_squared_error(Xy_target_evaluation['outcome'], y_pred_evaluation)
+                                    results.append({
+                                            'comb_nr': comb_base+comb_booster,
+                                            'parameters anchor': hyperparameter_base,
+                                            'parameters lgbm': hyperparameter_booster, 
+                                            "target": source,
+                                            "n_test": n,
+                                            "sample_seed": sample_seed,
+                                            'mse tuning': mse_tuning,
+                                            'mse target': mse_evaluation
+                                        })
                 print(f'finished combination {comb_base+comb_booster+1} from {num_combinations} using {model}')
     elif model in refit_methods: 
         print(f"Hyperparametrs for {model} will be chosen via performance on fine-tuning set from target \n")
@@ -188,7 +189,7 @@ if not results_exist(path=f'{model}_results.pkl'):
     save_data(path=f'{model}_results.pkl',results=results)
 
 
-#plotting(methods=methods, sources=sources, training_source=training_source)
+plotting(methods=methods, sources=sources, training_source=training_source)
 
 
 print('Script completed with no erros\n')
