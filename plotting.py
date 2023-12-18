@@ -18,7 +18,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
                 if 'tuning' not in file:
                     if 'grid' in file:
                         if 'ols' not in file: 
-                            parts=file.split('Pickle\\')
+                            parts=file.split('Pickle/')
                             parts2=parts[1].split('_results')
                             if 'rf' in file:
                                 df=df[lambda x: x['target'].eq(source)]

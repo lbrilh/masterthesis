@@ -67,6 +67,8 @@ def load_data_parquet(outcome, source, version='train'):
     return _data 
 
 Xy_eicu=load_data_parquet('hr', 'eicu')
+print(Xy_eicu.columns.tolist())
+raise ValueError
 Xy_hirid=load_data_parquet('hr', 'hirid')
 Xy_mimic=load_data_parquet('hr', 'mimic')
 Xy_miiv=load_data_parquet('hr', 'miiv')
@@ -85,7 +87,7 @@ X_miiv[s]=X_miiv[s].astype('float')
 column_index = X_eicu.columns.get_indexer(['categorical__sex_None'])[0]
 
 X_eicu=X_eicu[X_eicu['categorical__sex_None']==0].drop(columns=['categorical__sex_None'])
-print(X_eicu.shape)
+
 _Xdata={
     'eicu':X_eicu,
     'hirid':X_hirid,
