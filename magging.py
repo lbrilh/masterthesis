@@ -5,7 +5,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 import numpy as np
 from scipy.linalg import eigvals
-from data import save_data, results_exist, load_data
+from data import save_data, results_exist, load_data, load_data_plotting
 from itertools import combinations
 import pandas as pd
 import os 
@@ -13,7 +13,6 @@ from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
 
-##### Take regularization and apply it
 ##### Make it as a df
 
 _data=load_data('hr')
@@ -47,12 +46,17 @@ if not results_exist('parameters_ridge_data.pkl'):
         model_params = best_model.named_steps['model'].coef_
         params.append({
             'alpha': search.best_params_,
-            f'Parameters on {source}': model_params
+            f'Parameters on {source}': model_params,
+            'intercept': best_model.named_steps['model'].intercept_
         })
         print(f'Completed on {source}')
 
     save_data(path='parameters_ridge_data.pkl',results=params)
 
+_hyper=load_data_plotting(path='Pickle/parameters_ridge_data.pkl')
+
+_df_hyper=pd.DataFrame(_hyper)
+print(_df_hyper)
 
 def load_data_parquet(outcome, source, version='train'):
     current_directory = os.getcwd()
@@ -91,10 +95,14 @@ _Xdata={
 _params_data=load_data('parameters_ridge')
 
 _params={
-    'eicu':_params_data[0]['Parameters on eicu'],
-    'hirid':_params_data[1]['Parameters on hirid'],
-    'mimic':_params_data[2]['Parameters on mimic'],
-    'miiv':_params_data[3]['Parameters on miiv']
+    'eicu':{'parameters':_params_data[0]['Parameters on eicu'],
+            'intercept':_params_data[0]['intercept']},
+    'hirid':{'parameters':_params_data[1]['Parameters on hirid'],
+             'intercept':_params_data[1]['intercept']},
+    'mimic':{'parameters':_params_data[2]['Parameters on mimic'],
+             'intercept':_params_data[2]['intercept']},
+    'miiv':{'parameters':_params_data[3]['Parameters on miiv'],
+            'intercept':_params_data[3]['intercept']}
 }
 
 
@@ -109,23 +117,21 @@ for target in sources:
         data=_data[target]['train']
     for group1 in sources:
         if group1!=target:
-            pipeline.named_steps['model'].coef_= _params[group1]
-            pipeline.named_steps['model'].intercept_ = 0 
-            if group1=='eicu':
-                data=_data[group1]['train']
-                data=data[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
-            else:
-                data=_data[group1]['train']
+            pipeline.named_steps['model'].set_params={'alpha':1}
+            pipeline.named_steps['model'].coef_=_params[group1]['parameters']
+            pipeline.named_steps['model'].intercept_=_params[group1]['intercept']
             y_pred=pipeline.predict(data)
             mse=mean_squared_error(data['outcome'],y_pred)
             error.append({
                 'target': target,
                 'group 1': group1,
+                'group 2': "", 
+                'group 3': '',
                 'mse': mse
             })
             for group2 in sources:
                 if group2 not in [target, group1]:
-                    theta = np.column_stack((_params[group1],_params[group2]))
+                    theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters']))
                     hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
                     H = (theta.T @ hatS @ theta).values
                     P = matrix(2*H)  
@@ -136,19 +142,22 @@ for target in sources:
                     b = matrix(1.0)   
                     solution = solvers.qp(P, q, G, h, A, b)
                     w = np.array(solution['x']).flatten()
-                    pipeline.named_steps['model'].coef_= w[0]*_params[group1]+w[1]*_params[group2]
+                    pipeline.named_steps['model'].set_params={'alpha':1}
+                    pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']
+                    pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']
                     y_pred=pipeline.predict(data)
                     mse=mean_squared_error(data['outcome'],y_pred)
                     error.append({
                         'target': target,
                         'group 1': group1,
                         'group 2': group2,
+                        'group 3': '',
                         'weights': w,
                         'mse': mse
                     })
                     for group3 in sources: 
                         if group3 not in [target, group1, group2]:
-                            theta = np.column_stack((_params[group1],_params[group2],_params[group3]))
+                            theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters'],_params[group3]['parameters']))
                             hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
                             H = (theta.T @ hatS @ theta).values
                             P = matrix(2*H)  
@@ -159,7 +168,10 @@ for target in sources:
                             b = matrix(1.0)   
                             solution = solvers.qp(P, q, G, h, A, b)
                             w = np.array(solution['x']).flatten()
-                            pipeline.named_steps['model'].coef_= w[0]*_params[group1]+w[1]*_params[group2]+w[2]*_params[group3]
+                            pipeline.named_steps['model'].set_params={'alpha':1}
+                            pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']+w[2]*_params[group3]['parameters']
+                            pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']+w[2]*_params[group3]['intercept']
+
                             y_pred=pipeline.predict(data)
                             mse=mean_squared_error(data['outcome'],y_pred)
                             error.append({
@@ -173,61 +185,8 @@ for target in sources:
 
 save_data(path='magging_results.pkl',results=error)
 
+_data=load_data_plotting(path="Pickle/magging_results.pkl")
+df_results=pd.DataFrame(_data)
+print(df_results)
+
 print("Script run successful")
-
-print(error)
-
-
-##################### Matrix needs to be positive definite
-"""theta = np.column_stack((params_mimic, params_hirid))
-hatS = X_miiv.T @ X_miiv / X_miiv.shape[0]
-H = (theta.T @ hatS @ theta).values
-P = matrix(2*H)  
-q = matrix(np.zeros(2))
-G = matrix(-np.eye(2))
-print(G)
-h = matrix(np.zeros(2))
-A = matrix(1.0, (1, 2))  
-b = matrix(1.0)   
-solution = solvers.qp(P, q, G, h, A, b)
-w = np.array(solution['x']).flatten()  # Flatten to get it in the form of a 1-D array
-print(w)"""
-
-'''mse.append({
-    'target': target,
-    'used sources': {'eicu','hirid'},
-    'mse': 
-})'''
-'''
-theta = np.column_stack((params_eicu, params_mimic))
-mse.append({
-    'target': target,
-    'used sources': {'eicu','mimic'},
-    'mse': 
-})
-
-theta = np.column_stack((params_eicu, params_hirid, params_mimic))
-mse.append({
-    'target': target,
-    'used sources': {'eicu','hirid','mimic'},
-    'mse': 
-})'''
-
-'''Test when common effects are already noticable for different sizes of tuning?'''
-
-'''_params_data=load_data('parameters_ridge.pkl')
-
-params = pd.concat([_params_data[0]['Parameters on eicu'].
-                    _params_data[1]['Parameters on hirid'],
-                    _params_data[2]['Parameters on mimic'],
-                    _params_data[3]['Parameters on miiv']])
-'''
-'''X_eicu=Preprocessing.fit_transform(_data['eicu']['train'])
-X_hirid=Preprocessing.fit_transform(_data['hirid']['train'])
-X_mimic=Preprocessing.fit_transform(_data['mimic']['train'])
-X_miiv=Preprocessing.fit_transform(_data['miiv']['train'])
-result = pd.concat([X_eicu, X_hirid, X_mimic, X_miiv], axis=0)
-
-eigenvalues = eigvals(result)
-
-print(eigenvalues)'''
