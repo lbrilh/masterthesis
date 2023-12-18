@@ -32,7 +32,12 @@ if not results_exist('parameters_ridge_data.pkl'):
     params = []
     for source in ['eicu','hirid','mimic','miiv']:
         search = GridSearchCV(pipeline, param_grid= {'model__' + key : value for key, value in ridge_hyper.items()})
-        search.fit(_data[source]['train'], _data[source]['train']['outcome'])
+        if source=='eicu':
+            data=_data[source]['train']
+            data=data[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
+        else:
+            data=_data[source]['train']
+        search.fit(data, data['outcome'])
         best_model = search.best_estimator_
         model_params = best_model.named_steps['model'].coef_
         params.append({
@@ -57,26 +62,26 @@ X_eicu=Preprocessing.fit_transform(load_data_parquet('hr', 'eicu'))
 X_hirid=Preprocessing.fit_transform(load_data_parquet('hr', 'hirid'))
 X_mimic=Preprocessing.fit_transform(load_data_parquet('hr', 'mimic'))
 X_miiv=Preprocessing.fit_transform(load_data_parquet('hr', 'miiv'))
-pd.set_option('display.max_rows',None)
-print(X_miiv.dtypes)
-print(X_miiv.dropna().shape)
 
-print(X_miiv.shape)
+s=X_eicu.select_dtypes(include='bool').columns
+X_eicu[s]=X_eicu[s].astype('float')
+X_hirid[s]=X_hirid[s].astype('float')
+X_mimic[s]=X_mimic[s].astype('float')
+X_miiv[s]=X_miiv[s].astype('float')
+
+column_index = X_eicu.columns.get_indexer(['categorical__sex_None'])[0]
+X_eicu=X_eicu[X_eicu['categorical__sex_None']==0]
+print(X_eicu.shape)
 
 _params_data=load_data('parameters_ridge')
 
 params_eicu=_params_data[0]['Parameters on eicu']
-print(params_eicu.shape)
 params_hirid=_params_data[1]['Parameters on hirid']
-print(params_hirid.shape)
 params_mimic=_params_data[2]['Parameters on mimic']
-print(params_mimic.shape)
 params_miiv=_params_data[3]['Parameters on miiv']
-print(params_miiv.shape)
 
 mse=[]
-sources = ['eicu', 'hirid', 'mimic']
-
+sources=['eicu','hirid','mimic','miiv']
 choose_2_combinations = list(combinations(sources, 2))
 
 choose_3_combinations = list(combinations(sources, 3))
