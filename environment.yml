@@ -42,6 +42,7 @@ dependencies:
   - contourpy=1.2.0=py312h8572e83_0
   - cramjam=2.7.0=py312h4b3b743_1
   - cryptography=41.0.7=py312h241aef2_0
+  - cvxopt=1.3.2=py312h5dcb16e_1
   - cycler=0.12.1=pyhd8ed1ab_0
   - databricks-cli=0.18.0=pyhd8ed1ab_0
   - debugpy=1.8.0=py312h30efb56_1

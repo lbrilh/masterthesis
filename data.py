@@ -6,13 +6,13 @@ import pickle
 import pandas as pd
 
 
-'''def load_data(outcome):
+def load_data(outcome):
     current_directory = os.getcwd()
     relative_path = os.path.join('Parquet', f'{outcome}_data.parquet')
     file_path = os.path.join(current_directory, relative_path)
     if os.path.exists(file_path):
         print(f'The data file exists!')
-        _data = pd.read_parquet(file_path, engine='fastparquet')
+        _data = pd.read_parquet(file_path, engine='pyarrow')
     else:
         _data = load_data_for_prediction(sources,  outcome=outcome, log_transform=True)
         data = pd.DataFrame(_data)
@@ -54,11 +54,11 @@ def load_data_plotting(model=None,path=None):
         current_directory = os.getcwd()
         relative_path = os.path.join('Parquet', f'{model}_results.parquet')
         file_path = os.path.join(current_directory, relative_path)
-        _data=pd.read_parquet(file_path, engine='fastparquet')
-    return _data'''
+    _data=pd.read_parquet(file_path, engine='pyarrow')
+    return _data
 
 
-def load_data(outcome):
+"""def load_data(outcome):
     current_directory = os.getcwd()
     relative_path = os.path.join('Pickle', f'{outcome}_data.pkl')
     file_path = os.path.join(current_directory, relative_path)
@@ -109,4 +109,4 @@ def load_data_plotting(model=None,path=None):
         file_path = os.path.join(current_directory, relative_path)
     with open(file_path, 'rb') as data:
         _data=pickle.load(data)
-    return _data
+    return _data"""

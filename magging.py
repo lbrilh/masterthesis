@@ -13,6 +13,8 @@ from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
 
+
+
 ##### Make it as a df
 
 group_sizes=[30,100,-30]
@@ -24,23 +26,27 @@ group_sizes=[30,100,-30]
 # Do the same for Region
 # Non-Linear Estimators 
 
-_data=load_data('hr')
+#_data=load_data('hr')
 
+Regressor='ridge'
 ridge_hyper={
     'alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1]
 }
 
-Regressor=Ridge()
+Model={
+    'ridge':Ridge()}
 Preprocessing=ColumnTransformer(transformers=
                                 make_feature_preprocessing(missing_indicator=True)
                                 ).set_output(transform="pandas")
 
 pipeline = Pipeline(steps=[
     ('preprocessing', Preprocessing),
-    ('model', Regressor)
+    ('model', Model[Regressor])
 ])
+sources=['eicu','hirid','mimic','miiv']
 
 
+"""
 if not results_exist('parameters_ridge_data.pkl'):
     params = []
     for source in ['eicu','hirid','mimic','miiv']:
@@ -65,15 +71,6 @@ if not results_exist('parameters_ridge_data.pkl'):
 _hyper=load_data_plotting(path='Pickle/parameters_ridge_data.pkl')
 
 _df_hyper=pd.DataFrame(_hyper)
-
-def load_data_parquet(outcome, source, version='train'):
-    current_directory = os.getcwd()
-    relative_path = os.path.join('Parquet', f'{outcome}_data_{source}_{version}.parquet')
-    file_path = os.path.join(current_directory, relative_path)
-    _data = pd.read_parquet(file_path, engine='pyarrow')
-    print(f'Data loaded successfully: {file_path}\n')
-    return _data 
-
 Xy_eicu=load_data_parquet('hr', 'eicu')
 print(Xy_eicu['region'].unique())
 #raise ValueError
@@ -101,7 +98,61 @@ _Xdata={
     'hirid':X_hirid,
     'mimic':X_mimic,
     'miiv':X_miiv
+}"""
+
+
+def load_data_parquet(outcome, source, version='train'):
+    current_directory = os.getcwd()
+    relative_path = os.path.join('Parquet', f'{outcome}_data_{source}_{version}.parquet')
+    file_path = os.path.join(current_directory, relative_path)
+    _data = pd.read_parquet(file_path, engine='pyarrow')
+    return _data 
+
+
+def preprocessing(outcome, dataset_name): # drop all rows with missing sex and replace bool dtype as float dtype since numpy can't do calculus with bool values
+    Xy_data=load_data_parquet(outcome,dataset_name)
+    X=Preprocessing.fit_transform(Xy_data)
+    s=X.select_dtypes(include='bool').columns
+    X[s]=X[s].astype('float')
+    if dataset_name=='eicu':
+        X=X[X['categorical__sex_None']==0].drop(columns=['categorical__sex_None'])
+    return X
+
+
+_Xydata={
+    'eicu':load_data_parquet('hr','eicu')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'hirid':load_data_parquet('hr','hirid')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'mimic':load_data_parquet('hr','mimic')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'miiv':load_data_parquet('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
 }
+
+
+_Xdata={
+    'eicu':preprocessing('hr','eicu'),
+    'hirid':preprocessing('hr','hirid'),
+    'mimic':preprocessing('hr','mimic'),
+    'miiv':preprocessing('hr','miiv')
+}
+
+# Find penalization parameter on all sources
+if not results_exist(f'parameters_{Regressor}_data.parquet'):
+    params = []
+    for source in sources:
+        search = GridSearchCV(pipeline, param_grid= {'model__' + key : value for key, value in ridge_hyper.items()})
+        data=_Xydata[source]
+        search.fit(data, data['outcome'])
+        best_model = search.best_estimator_
+        model_params = best_model.named_steps['model'].coef_
+        params.append({
+            'alpha': search.best_params_,
+            f'Parameters on {source}': model_params,
+            'intercept': best_model.named_steps['model'].intercept_
+        })
+    save_data(path='parameters_ridge_data.parquet',results=params)
+
+_df_hyper=load_data_plotting(path=f'Parquet/parameters_{Regressor}_data.parquet')
+
+################################################################################################ Set parameters for datasets and include intercept
 _params_data=load_data('parameters_ridge')
 
 _params={
@@ -115,83 +166,106 @@ _params={
             'intercept':_params_data[3]['intercept']}
 }
 
+raise ValueError
 
+
+####################################################################################################
+
+
+
+##################################################################################################### magging
 error=[]
 sources=['eicu','hirid','mimic','miiv']
 
-for target in sources:
-    if target=='eicu':
-        data=_data[target]['train']
-        data=data[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
-    else:
-        data=_data[target]['train']
-    for group1 in sources:
-        if group1!=target:
-            pipeline.named_steps['model'].set_params={'alpha':1}
-            pipeline.named_steps['model'].coef_=_params[group1]['parameters']
-            pipeline.named_steps['model'].intercept_=_params[group1]['intercept']
-            y_pred=pipeline.predict(data)
-            mse=mean_squared_error(data['outcome'],y_pred)
-            error.append({
-                'target': target,
-                'group 1': group1,
-                'group 2': "", 
-                'group 3': '',
-                'mse': mse
-            })
-            for group2 in sources:
-                if group2 not in [target, group1]:
-                    theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters']))
-                    hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
-                    H = (theta.T @ hatS @ theta).values
-                    P = matrix(2*H)  
-                    q = matrix(np.zeros(2))
-                    G = matrix(-np.eye(2))
-                    h = matrix(np.zeros(2))
-                    A = matrix(1.0, (1, 2))  
-                    b = matrix(1.0)   
-                    solution = solvers.qp(P, q, G, h, A, b)
-                    w = np.array(solution['x']).flatten()
-                    pipeline.named_steps['model'].set_params={'alpha':1}
-                    pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']
-                    pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']
-                    y_pred=pipeline.predict(data)
-                    mse=mean_squared_error(data['outcome'],y_pred)
-                    error.append({
-                        'target': target,
-                        'group 1': group1,
-                        'group 2': group2,
-                        'group 3': '',
-                        'weights': w,
-                        'mse': mse
-                    })
-                    for group3 in sources: 
-                        if group3 not in [target, group1, group2]:
-                            theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters'],_params[group3]['parameters']))
-                            hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
-                            H = (theta.T @ hatS @ theta).values
-                            P = matrix(2*H)  
-                            q = matrix(np.zeros(3))
-                            G = matrix(-np.eye(3))
-                            h = matrix(np.zeros(3))
-                            A = matrix(1.0, (1, 3))  
-                            b = matrix(1.0)   
-                            solution = solvers.qp(P, q, G, h, A, b)
-                            w = np.array(solution['x']).flatten()
-                            pipeline.named_steps['model'].set_params={'alpha':1}
-                            pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']+w[2]*_params[group3]['parameters']
-                            pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']+w[2]*_params[group3]['intercept']
+Regressor=Ridge()
 
-                            y_pred=pipeline.predict(data)
-                            mse=mean_squared_error(data['outcome'],y_pred)
-                            error.append({
-                                'target': target,
-                                'group 1': group1,
-                                'group 2': group2,
-                                'group 3': group3,
-                                'weights': w,
-                                'mse': mse
-                            })
+def magging(Regressor):
+    ridge_hyper={
+    'alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1]
+    }
+    Preprocessing=ColumnTransformer(transformers=
+                                    make_feature_preprocessing(missing_indicator=True)
+                                    ).set_output(transform="pandas")
+
+    pipeline = Pipeline(steps=[
+        ('preprocessing', Preprocessing),
+        ('model', Regressor)
+    ])
+    for target in sources:
+        if target=='eicu':
+            data=_data[target]['train']
+            data=data[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
+        else:
+            data=_data[target]['train']
+        for group1 in sources:
+            if group1!=target:
+                pipeline.named_steps['model'].set_params={'alpha':1}
+                pipeline.named_steps['model'].coef_=_params[group1]['parameters']
+                pipeline.named_steps['model'].intercept_=_params[group1]['intercept']
+                y_pred=pipeline.predict(data)
+                mse=mean_squared_error(data['outcome'],y_pred)
+                error.append({
+                    'target': target,
+                    'group 1': group1,
+                    'group 2': "", 
+                    'group 3': '',
+                    'mse': mse
+                })
+                for group2 in sources:
+                    if group2 not in [target, group1]:
+                        theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters']))
+                        hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
+                        H = (theta.T @ hatS @ theta).values
+                        P = matrix(2*H)  
+                        q = matrix(np.zeros(2))
+                        G = matrix(-np.eye(2))
+                        h = matrix(np.zeros(2))
+                        A = matrix(1.0, (1, 2))  
+                        b = matrix(1.0)   
+                        solution = solvers.qp(P, q, G, h, A, b)
+                        w = np.array(solution['x']).flatten()
+                        pipeline.named_steps['model'].set_params={'alpha':1}
+                        pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']
+                        pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']
+                        y_pred=pipeline.predict(data)
+                        mse=mean_squared_error(data['outcome'],y_pred)
+                        error.append({
+                            'target': target,
+                            'group 1': group1,
+                            'group 2': group2,
+                            'group 3': '',
+                            'weights': w,
+                            'mse': mse
+                        })
+                        for group3 in sources: 
+                            if group3 not in [target, group1, group2]:
+                                theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters'],_params[group3]['parameters']))
+                                hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
+                                H = (theta.T @ hatS @ theta).values
+                                P = matrix(2*H)  
+                                q = matrix(np.zeros(3))
+                                G = matrix(-np.eye(3))
+                                h = matrix(np.zeros(3))
+                                A = matrix(1.0, (1, 3))  
+                                b = matrix(1.0)   
+                                solution = solvers.qp(P, q, G, h, A, b)
+                                w = np.array(solution['x']).flatten()
+                                pipeline.named_steps['model'].set_params={'alpha':1}
+                                pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']+w[2]*_params[group3]['parameters']
+                                pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']+w[2]*_params[group3]['intercept']
+
+                                y_pred=pipeline.predict(data)
+                                mse=mean_squared_error(data['outcome'],y_pred)
+                                error.append({
+                                    'target': target,
+                                    'group 1': group1,
+                                    'group 2': group2,
+                                    'group 3': group3,
+                                    'weights': w,
+                                    'mse': mse
+                                })
+
+###########################################################################
 
 save_data(path='magging_results_across_data_sets.pkl',results=error)
 
