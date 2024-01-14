@@ -36,7 +36,9 @@ def save_data(path,results):
     relative_path = os.path.join('Parquet',path)
     file_path = os.path.join(current_directory, relative_path)
     data = pd.DataFrame(results)
-    data.to_parquet(path)
+    print(data.head())
+    print(file_path)
+    data.to_parquet(file_path)
     print(f'Results stored successful')
 
 
