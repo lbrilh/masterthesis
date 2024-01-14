@@ -15,6 +15,15 @@ from sklearn.metrics import mean_squared_error
 
 ##### Make it as a df
 
+group_sizes=[30,100,-30]
+
+##### ToDo:
+# Select the last 30 unique elements from data as validation set
+# Select first unique n elements from group size 
+# Use these groups to predict the mse of the hold out test set
+# Do the same for Region
+# Non-Linear Estimators 
+
 _data=load_data('hr')
 
 ridge_hyper={
@@ -56,7 +65,6 @@ if not results_exist('parameters_ridge_data.pkl'):
 _hyper=load_data_plotting(path='Pickle/parameters_ridge_data.pkl')
 
 _df_hyper=pd.DataFrame(_hyper)
-print(_df_hyper)
 
 def load_data_parquet(outcome, source, version='train'):
     current_directory = os.getcwd()
@@ -67,8 +75,8 @@ def load_data_parquet(outcome, source, version='train'):
     return _data 
 
 Xy_eicu=load_data_parquet('hr', 'eicu')
-print(Xy_eicu.columns.tolist())
-raise ValueError
+print(Xy_eicu['region'].unique())
+#raise ValueError
 Xy_hirid=load_data_parquet('hr', 'hirid')
 Xy_mimic=load_data_parquet('hr', 'mimic')
 Xy_miiv=load_data_parquet('hr', 'miiv')
@@ -185,10 +193,10 @@ for target in sources:
                                 'mse': mse
                             })
 
-save_data(path='magging_results.pkl',results=error)
+save_data(path='magging_results_across_data_sets.pkl',results=error)
 
-_data=load_data_plotting(path="Pickle/magging_results.pkl")
+_data=load_data_plotting(path="Pickle/magging_results_across_data_sets.pkl")
 df_results=pd.DataFrame(_data)
-print(df_results)
+print(df_results.iloc[:15])
 
 print("Script run successful")
