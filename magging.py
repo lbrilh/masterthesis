@@ -35,7 +35,7 @@ group_sizes=[30,100,-30]
 
 
 hyper_params={
-    'elasticnet':{"alpha": [0.001, 0.00316, 0.01, 0.0316, 0.1, 0.316, 1, 3.16, 10, 31.6, 100],
+    'elasticnet':{"alpha": [0.001, 0.1, 1, 10, 31.6, 100],
                   "l1_ratio": [0, 0.2, 0.5, 0.8, 1]},
 }
 
@@ -141,6 +141,9 @@ for dataset in datasets:
             'l1_ratio': row['l1_ratio']
         }
 
+save_data(path=f'parameters_{Regressor}_hospitals_data.parquet',results=grouped_dfs)
+print("Script run successful")
+"""
 for target in datasets:
     data = _Xydata[target]
     
@@ -290,4 +293,4 @@ for target in datasets:
 save_data(path=f'magging_{Regressor}_results.parquet',results=error)
 data=load_data_plotting(path=f"Parquet/magging_{Regressor}_results.parquet")
 print(data)
-print("Script run successful")
+print("Script run successful")"""
