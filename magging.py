@@ -9,7 +9,7 @@ from data import save_data, results_exist, load_data, load_data_plotting
 from itertools import combinations
 import pandas as pd
 import os 
-import pickle
+from copy import copy
 from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
@@ -163,108 +163,66 @@ _params_model=load_data(f'parameters_{Regressor}')
 
 _params={
     'eicu':{'parameters':_params_model['Parameters on eicu'][0],
-            'intercept':_params_model['intercept'][0]},
+            'intercept':_params_model['intercept'][0],
+            'alpha':_params_model['intercept'][0]},
     'hirid':{'parameters':_params_model['Parameters on hirid'][1],
-             'intercept':_params_model['intercept'][1]},
+             'intercept':_params_model['intercept'][1],
+             'alpha':_params_model['intercept'][1]},
     'mimic':{'parameters':_params_model['Parameters on mimic'][2],
-             'intercept':_params_model['intercept'][2]},
+             'intercept':_params_model['intercept'][2],
+             'alpha':_params_model['intercept'][2]},
     'miiv':{'parameters':_params_model['Parameters on miiv'][3],
-            'intercept':_params_model['intercept'][3]}
+            'intercept':_params_model['intercept'][3],
+            'alpha':_params_model['intercept'][3]}
 }
 
 
 error=[]
+# Group automatically 
 
-# use itertools
-# group automatically
 for target in datasets:
-    data=_Xydata[target]
-
-    for group1 in datasets:
-        if group1!=target:
-            pipeline.named_steps['model'].set_params={'alpha':1}
-            pipeline.named_steps['model'].coef_=_params[group1]['parameters']
-            pipeline.named_steps['model'].intercept_=_params[group1]['intercept']
-            y_pred=pipeline.predict(data)
-            mse=mean_squared_error(data['outcome'],y_pred)
-            error.append({
-                'target': target,
-                'group 1': group1,
-                'group 2': "", 
-                'group 3': '',
-                'mse': mse
-            })
-            for group2 in datasets:
-                if group2 not in [target, group1]:
-                    theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters']))
-                    hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
-                    H = (theta.T @ hatS @ theta).values
-                    P = matrix(2*H)  
-                    q = matrix(np.zeros(2))
-                    G = matrix(-np.eye(2))
-                    h = matrix(np.zeros(2))
-                    A = matrix(1.0, (1, 2))  
-                    b = matrix(1.0)   
-                    solution = solvers.qp(P, q, G, h, A, b)
-                    w = np.array(solution['x']).flatten()
-                    pipeline.named_steps['model'].set_params={'alpha':1}
-                    pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']
-                    pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']
-                    y_pred=pipeline.predict(data)
-                    mse=mean_squared_error(data['outcome'],y_pred)
-                    error.append({
-                        'target': target,
-                        'group 1': group1,
-                        'group 2': group2,
-                        'group 3': '',
-                        'weights': w,
-                        'mse': mse
-                    })
-                    for group3 in datasets: 
-                        if group3 not in [target, group1, group2]:
-                            theta = np.column_stack((_params[group1]['parameters'],_params[group2]['parameters'],_params[group3]['parameters']))
-                            hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
-                            H = (theta.T @ hatS @ theta).values
-                            P = matrix(2*H)  
-                            q = matrix(np.zeros(3))
-                            G = matrix(-np.eye(3))
-                            h = matrix(np.zeros(3))
-                            A = matrix(1.0, (1, 3))  
-                            b = matrix(1.0)   
-                            solution = solvers.qp(P, q, G, h, A, b)
-                            w = np.array(solution['x']).flatten()
-                            pipeline.named_steps['model'].set_params={'alpha':1}
-                            pipeline.named_steps['model'].coef_= w[0]*_params[group1]['parameters']+w[1]*_params[group2]['parameters']+w[2]*_params[group3]['parameters']
-                            pipeline.named_steps['model'].intercept_=w[0]*_params[group1]['intercept']+w[1]*_params[group2]['intercept']+w[2]*_params[group3]['intercept']
-
-                            y_pred=pipeline.predict(data)
-                            mse=mean_squared_error(data['outcome'],y_pred)
-                            error.append({
-                                'target': target,
-                                'group 1': group1,
-                                'group 2': group2,
-                                'group 3': group3,
-                                'weights': w,
-                                'mse': mse
-                            })
-
-######################################################################## Why tf is it not saving correctly????
+    data = _Xydata[target]
+    
+    # Handle combinations of 1, 2, and 3 groups
+    for r in range(1, len(datasets)):
+        for group_combination in combinations(datasets, r):
+            if target not in group_combination:
+                # Calculate weights for the selected groups
+                theta = np.column_stack([_params[group]['parameters'] for group in group_combination])
+                hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
+                H = (theta.T @ hatS @ theta).values
+                P = matrix(2 * H)
+                q = matrix(np.zeros(r))
+                G = matrix(-np.eye(r))
+                h = matrix(np.zeros(r))
+                A = matrix(1.0, (1, r))
+                b = matrix(1.0)
+                solution = solvers.qp(P, q, G, h, A, b)
+                w = np.array(solution['x']).flatten()
+                
+                # Set model parameters, intercept and penalization
+                model_coef = np.sum([w[i] * _params[group]['parameters'] for i, group in enumerate(group_combination)], axis=0)
+                model_penal = np.sum([w[i] * _params[group]['alpha'] for i, group in enumerate(group_combination)], axis=0)
+                model_intercept = np.sum([w[i] * _params[group]['intercept'] for i, group in enumerate(group_combination)])
+                pipeline.named_steps['model'].set_params(alpha=model_penal)
+                pipeline.named_steps['model'].coef_ = model_coef
+                pipeline.named_steps['model'].intercept_ = model_intercept
+                
+                # Make predictions and calculate MSE
+                y_pred = pipeline.predict(data)
+                mse = mean_squared_error(data['outcome'], y_pred)
+                
+                # Store results in the error list
+                error.append({
+                    'target': target,
+                    'group 1': group_combination[0] if len(group_combination) > 0 else '',
+                    'group 2': group_combination[1] if len(group_combination) > 1 else '',
+                    'group 3': group_combination[2] if len(group_combination) > 2 else '',
+                    'weights': w,
+                    'mse': mse
+                })
 save_data(path=f'magging_{Regressor}_results.parquet',results=error)
 
-"""
-def load_data_plotting(model=None,path=None):
-    if path:
-        file_path=path
-    else: 
-        current_directory = os.getcwd()
-        relative_path = os.path.join('Pickle', f'{model}_results.pkl')
-        file_path = os.path.join(current_directory, relative_path)
-    with open(file_path, 'rb') as data:
-        _data=pickle.load(data)
-    return _data"""
-'''
-_data=load_data_plotting(path=f"magging_{Regressor}_results.parquet")
-df_results=pd.DataFrame(_data)
-print(df_results.iloc[:15])'''
+_data=load_data_plotting(path=f"Parquet/magging_{Regressor}_results.parquet")
 
 print("Script run successful")
