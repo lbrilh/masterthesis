@@ -121,7 +121,6 @@ def fit_and_extract_info(group_df):
 print('Start grouped regression')
 
 
-_params_model = load_data(f'parameters_{Regressor}')
 _params = {
     'eicu': {},
     'hirid': {},
