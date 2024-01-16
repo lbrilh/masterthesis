@@ -35,8 +35,8 @@ def save_data(path,results):
     current_directory = os.getcwd()
     relative_path = os.path.join('Parquet',path)
     file_path = os.path.join(current_directory, relative_path)
-    #data = pd.DataFrame(results)
-    data=results #### in magging we already have a nested df as result
+    data = pd.DataFrame(results)
+    #data=results #### in magging we already have a nested df as result
     print(data.head())
     print(file_path)
     data.to_parquet(file_path)
