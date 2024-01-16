@@ -14,6 +14,14 @@ from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
 # Groups: Hospital; sex?
+### to do: 
+#### - compare predictive performance
+#### - generalize it 
+#### - new groups
+##### - ethnic 
+#### - non-linear estimators (plug-in principle)
+##### - LGBM
+##### - Anchor + LGBM 
 
 Regressor='elasticnet'
 
@@ -93,9 +101,9 @@ _Xdata={
 }
 
 ###########################################################################################
-i=1
 
 def fit_and_extract_info(group_df):
+        print(group_df['hospital_id'].iloc[0])
         
         search = GridSearchCV(pipeline, param_grid= {'model__' + key : value for key, value in hyper_params[Regressor].items()})
         data=_Xydata["eicu"]
@@ -108,8 +116,7 @@ def fit_and_extract_info(group_df):
     # Extract coefficients and intercept from the fitted ElasticNet model
         coefficients = search.best_estimator_.named_steps['model'].coef_
         intercept = search.best_estimator_.named_steps['model'].intercept_
-        print(f'group {i} done')
-        i+=1
+        print(alpha)
         return {
             'hospital_id': group_df['hospital_id'].iloc[0],  # Extract the hospital_id
             'alpha': alpha,
