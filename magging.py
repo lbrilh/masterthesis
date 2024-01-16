@@ -13,15 +13,21 @@ from copy import copy
 from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
-# Groups: Hospital; sex?
 ### to do: 
 #### - compare predictive performance
 #### - generalize it 
 #### - new groups
-##### - ethnic 
+##### - ethnic
+##### - numbedscategory
+##### - age (exclude all with 1 observation --- all other have at least 6 observations)
+##### - services (exclude all with less than 3 admissions --- all other have at least 8 observations)
 #### - non-linear estimators (plug-in principle)
 ##### - LGBM
-##### - Anchor + LGBM 
+##### - Anchor + LGBM
+#### - Plotting
+#### - Make GitHub look nice
+#### - Shared Lasso
+#### - Group DRO
 
 Regressor='elasticnet'
 
@@ -43,7 +49,7 @@ group_sizes=[30,100,-30]
 
 
 hyper_params={
-    'elasticnet':{"alpha": [0.001, 0.1, 1, 10, 31.6, 100],
+    'elasticnet':{"alpha": [0.001, 1, 10, 100],
                   "l1_ratio": [0, 0.2, 0.5, 0.8, 1]},
 }
 

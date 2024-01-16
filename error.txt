@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/cluster/home/lucabri/masterthesis/experiments_script.py", line 10, in <module>
-    _data = load_data(outcome)
-  File "/cluster/home/lucabri/masterthesis/data.py", line 15, in load_data
-    _data = pickle.load(data)
-AttributeError: Can't get attribute '_unpickle_block' on <module 'pandas._libs.internals' from '/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/_libs/internals.cpython-38-x86_64-linux-gnu.so'>

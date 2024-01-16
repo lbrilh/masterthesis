@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --time=00:08:00
-#SBATCH --job-name=LGBMRefit 
+#SBATCH --time=03:00:00
+#SBATCH --job-name=Magging 
 #SBATCH --output=output.txt
 #SBATCH --error=error.txt
 
-python /cluster/home/lucabri/masterthesis/experiments_script.py
+python /cluster/home/lucabri/masterthesis/magging.py
