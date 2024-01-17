@@ -1,9 +1,0 @@
-The result file exists!
-Start region
-eicu
-70
-65
-Midwest
-TEST
-Midwest
-TEST

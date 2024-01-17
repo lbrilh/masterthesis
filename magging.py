@@ -17,13 +17,12 @@ from sklearn.metrics import mean_squared_error
 #### - compare predictive performance
 #### - generalize it 
 #### - new groups
-##### - ethnic (not for HiRID)
-##### - numbedscategory (exists only for eICU)
 ##### - region (exists only for eICU)
-##### - (age (exclude all with 1 observation --- all other have at least 6 observations))
+##### - hospital_id
 ##### - services (exclude all with less than 3 admissions --- all other have at least 8 observations)
 ###### - region and hospital_id, services have different size of feature vector for eicu
 ###### - mimic,miiv,hirid has none values (wenn in DataFrame eingefügt und länge=0 dann skippen)
+###### Lösung: Merke welche column 0 wird und dort eine 0 hinzufügen
 #### - non-linear estimators (plug-in principle)
 ##### - LGBM
 ##### - Anchor + LGBM
@@ -43,10 +42,10 @@ grouping_column = 'region'
 
 ########################### Check if region, hospital_id, services have now same size
 
-'''_data= load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].dropna().values
-#print(len(_data))
+'''_data= load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].values
+print(_data)
 for i in range(len(_data)):
-    print(len((_data[i])['parameters']))
+    print(len((_data[i])['coefficients']))
     print()
 raise ValueError'''
 
@@ -86,21 +85,14 @@ def fit_and_extract_info(group_df, grouping_column, dataset):
     if len(group_df)<8:
         return {}
     search = GridSearchCV(pipeline, param_grid= {'model__' + key : value for key, value in hyper_params[Regressor].items()})
-    print(group_df[grouping_column].iloc[0])
-    print("TEST")
     search.fit(group_df, group_df['outcome'])
     # Extract alpha and l1_ratio from the best_params dictionary
     best_params = search.best_params_
     alpha = best_params['model__alpha']
     l1_ratio = best_params['model__l1_ratio']
-
+    print(search.best_estimator_.named_steps['model'].feature_names_in_)
 # Extract coefficients and intercept from the fitted ElasticNet model
     coefficients = search.best_estimator_.named_steps['model'].coef_
-    print(len(group_df.columns))
-    print(type(coefficients))
-    print(coefficients.shape)
-    print(search.best_estimator_.named_steps['model'].feature_names_in_)
-    print(coefficients)
     intercept = search.best_estimator_.named_steps['model'].intercept_
     return {
         f'{grouping_column}': group_df[grouping_column].iloc[0],  # Extract the group
@@ -113,6 +105,23 @@ def fit_and_extract_info(group_df, grouping_column, dataset):
 #print('Start grouped regression')
 
 
+if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # include not
+    grouped_dfs = {}
+    _params = {'eicu':{},
+                'hirid':{},
+                'mimic':{},
+                'miiv':{}
+    }
+    for dataset in datasets:
+        print(dataset)
+        grouped=_Xydata[dataset].groupby(by=grouping_column)
+        for group_name, group_data in grouped:
+            _params[dataset][group_name]=fit_and_extract_info(group_data,grouping_column,dataset)
+    raise ValueError
+    save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
+
+
+'''
 if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # include not
     print(f'Start {grouping_column}')
     grouped_dfs = {}
@@ -133,8 +142,8 @@ if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # in
             missing_columns.extend(missing_cols)
         # Remove duplicates by converting to a set and back to a list
         missing_columns = list(set(missing_columns))
-        '''for group_name, group_data in grouped:
-            group_data.drop(columns=missing_columns, inplace=True)'''
+        for group_name, group_data in grouped:
+            group_data.drop(columns=missing_columns, inplace=True)
         _Xydata[dataset].drop(columns=missing_columns,inplace=True)
         print(len(_Xydata[dataset].columns))
         grouped_dfs[dataset] = pd.DataFrame(list(_Xydata[dataset].groupby(by=grouping_column).apply(fit_and_extract_info, grouping_column, dataset)))
@@ -152,7 +161,7 @@ if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # in
     raise ValueError
     save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
     print(f'finished {grouping_column}')
-    print()
+    print()'''
 
 
 def preprocessing(outcome, dataset_name): # drop all rows with missing sex and replace bool dtype as float dtype since numpy can't do calculus with bool values
@@ -172,12 +181,12 @@ _Xdata={
 }
 
 
-'''### Spezialisiert auf Predictions von eICU auf alles andere
-_params_model=load_data(f'parameters_{Regressor}_{grouping_column}')['miiv'].dropna().values
+### Spezialisiert auf Predictions von eICU auf alles andere
+_params_model=load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].dropna().values
 error=[] 
 for target in datasets:
     r=len(_params_model)
-    theta = np.column_stack([(_params_model[i])['parameters'] for i in range(len(_params_model))])
+    theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
     hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
     H = (theta.T @ hatS @ theta).values # needs to be positive definite
     P = matrix(2 * H)
@@ -190,7 +199,7 @@ for target in datasets:
     w = np.array(solution['x']).round(decimals=2).flatten()
     
     # Set model parameters, intercept and penalization
-    model_coef = np.sum([w[i] * (_params_model[i])['parameters'] for i in range(len(_params_model))], axis=0)
+    model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
     model_penal = np.sum([w[i] * (_params_model[i])['alpha'] for i in range(len(_params_model))], axis=0)
     model_l1_ratio = np.sum([w[i] * (_params_model[i])['l1_ratio'] for i in range(len(_params_model))], axis=0)
     model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))])
@@ -213,8 +222,10 @@ for target in datasets:
 print(pd.DataFrame(error))
 print(pd.DataFrame(error)[['weights']].to_string())
 print(pd.DataFrame(error).to_latex())
-#save_data(path=f'magging_{Regressor}_{group_by_column}_results.parquet',results=error)
-'''
+save_data(path=f'magging_{Regressor}_{grouping_column}_results.parquet',results=error)
+
+
+
 """
 for group_by_column in grouping_columns:
     _params_model=load_data(f'parameters_{Regressor}_{group_by_column}') 
