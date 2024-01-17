@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --time=10:01:00
-#SBATCH --job-name=Services
+#SBATCH --time=0:05:00
+#SBATCH --job-name=Region
 #SBATCH --output=output.txt
 #SBATCH --error=error.txt
 

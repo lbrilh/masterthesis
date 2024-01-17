@@ -38,16 +38,17 @@ from sklearn.metrics import mean_squared_error
 
 Regressor='elasticnet'
 datasets=['eicu','hirid','mimic','miiv']
-grouping_column = 'services'
+grouping_column = 'region'
 
 
-_data= load_data(f'parameters_{Regressor}_{grouping_column}')['hirid'].values
-print(_data)
+########################### Check if region, hospital_id, services have now same size
+
+'''_data= load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].dropna().values
 #print(len(_data))
 for i in range(len(_data)):
     print(len((_data[i])['parameters']))
     print()
-raise ValueError
+raise ValueError'''
 
 hyper_params={
     'elasticnet':{"alpha": [0.001, 1, 10, 100],
@@ -82,10 +83,11 @@ _Xydata={
 }
 
 def fit_and_extract_info(group_df, grouping_column, dataset):
-    print(group_df[grouping_column].iloc[0])
     if len(group_df)<8:
         return {}
     search = GridSearchCV(pipeline, param_grid= {'model__' + key : value for key, value in hyper_params[Regressor].items()})
+    print(group_df[grouping_column].iloc[0])
+    print("TEST")
     search.fit(group_df, group_df['outcome'])
     # Extract alpha and l1_ratio from the best_params dictionary
     best_params = search.best_params_
@@ -94,6 +96,11 @@ def fit_and_extract_info(group_df, grouping_column, dataset):
 
 # Extract coefficients and intercept from the fitted ElasticNet model
     coefficients = search.best_estimator_.named_steps['model'].coef_
+    print(len(group_df.columns))
+    print(type(coefficients))
+    print(coefficients.shape)
+    print(search.best_estimator_.named_steps['model'].feature_names_in_)
+    print(coefficients)
     intercept = search.best_estimator_.named_steps['model'].intercept_
     return {
         f'{grouping_column}': group_df[grouping_column].iloc[0],  # Extract the group
@@ -105,7 +112,8 @@ def fit_and_extract_info(group_df, grouping_column, dataset):
 
 #print('Start grouped regression')
 
-if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
+
+if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # include not
     print(f'Start {grouping_column}')
     grouped_dfs = {}
     _params = {'eicu':{},
@@ -116,8 +124,20 @@ if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
 
     for dataset in datasets:
         print(dataset)
+        print(len(_Xydata[dataset].columns))
+        grouped=_Xydata[dataset].groupby(by=grouping_column)
+        missing_columns = []
+
+        for group_name, group_data in grouped:
+            missing_cols = group_data.columns[group_data.isna().all()]
+            missing_columns.extend(missing_cols)
+        # Remove duplicates by converting to a set and back to a list
+        missing_columns = list(set(missing_columns))
+        '''for group_name, group_data in grouped:
+            group_data.drop(columns=missing_columns, inplace=True)'''
+        _Xydata[dataset].drop(columns=missing_columns,inplace=True)
+        print(len(_Xydata[dataset].columns))
         grouped_dfs[dataset] = pd.DataFrame(list(_Xydata[dataset].groupby(by=grouping_column).apply(fit_and_extract_info, grouping_column, dataset)))
-        print()
         # Filter out None values (groups with less than min_observation_count observations)
         grouped_dfs[dataset] = grouped_dfs[dataset].dropna()
         
@@ -129,6 +149,7 @@ if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
                 'alpha': row['alpha'],
                 'l1_ratio': row['l1_ratio']
             }
+    raise ValueError
     save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
     print(f'finished {grouping_column}')
     print()
@@ -151,8 +172,8 @@ _Xdata={
 }
 
 
-### Spezialisiert auf Predictions von eICU auf alles andere
-_params_model=load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].values
+'''### Spezialisiert auf Predictions von eICU auf alles andere
+_params_model=load_data(f'parameters_{Regressor}_{grouping_column}')['miiv'].dropna().values
 error=[] 
 for target in datasets:
     r=len(_params_model)
@@ -166,7 +187,7 @@ for target in datasets:
     A = matrix(1.0, (1, r))
     b = matrix(1.0)
     solution = solvers.qp(P, q, G, h, A, b)
-    w = np.array(solution['x']).flatten()
+    w = np.array(solution['x']).round(decimals=2).flatten()
     
     # Set model parameters, intercept and penalization
     model_coef = np.sum([w[i] * (_params_model[i])['parameters'] for i in range(len(_params_model))], axis=0)
@@ -184,15 +205,16 @@ for target in datasets:
     # Store results in the error list
     error.append({
         'target': target,
-        'mse': mse,
-        'mean alpha': model_penal,
-        'mean l1_ratio': model_l1_ratio,
+        'mse': round(mse,2),
+        'mean alpha': round(model_penal,2),
+        'mean l1_ratio': round(model_l1_ratio,2),
         'weights': w,
     })
 print(pd.DataFrame(error))
 print(pd.DataFrame(error)[['weights']].to_string())
+print(pd.DataFrame(error).to_latex())
 #save_data(path=f'magging_{Regressor}_{group_by_column}_results.parquet',results=error)
-
+'''
 """
 for group_by_column in grouping_columns:
     _params_model=load_data(f'parameters_{Regressor}_{group_by_column}') 
@@ -278,7 +300,7 @@ for group_by_column in grouping_columns:
 ################################################################################################
 ################################################################################################
 ################################################################################################
-"""# Find penalization parameter on all datasets
+'''# Find penalization parameter on all datasets
 if not results_exist(f'parameters_{Regressor}_data.parquet'):
     params = []
     for source in datasets:
@@ -338,7 +360,7 @@ for target in datasets:
                 A = matrix(1.0, (1, r))
                 b = matrix(1.0)
                 solution = solvers.qp(P, q, G, h, A, b)
-                w = np.array(solution['x']).flatten()
+                w = np.array(solution['x']).round(decimals=2).flatten()
                 
                 # Set model parameters, intercept and penalization
                 model_coef = np.sum([w[i] * _params[group]['parameters'] for i, group in enumerate(group_combination)], axis=0)
@@ -359,12 +381,12 @@ for target in datasets:
                     'group 1': group_combination[0] if len(group_combination) > 0 else '',
                     'group 2': group_combination[1] if len(group_combination) > 1 else '',
                     'group 3': group_combination[2] if len(group_combination) > 2 else '',
-                    'mean alpha': model_penal,
-                    'mean l1_ratio': model_l1_ratio,
-                    'weights': w,
-                    'mse': mse
+                    'mse': round(mse,2),
+                    'mean alpha': round(model_penal,2),
+                    'mean l1_ratio': round(model_l1_ratio,2),
+                    'weights': w
                 })
 save_data(path=f'magging_{Regressor}_results.parquet',results=error)
 data=load_data_plotting(path=f"Parquet/magging_{Regressor}_results.parquet")
-print(data)
-print("Script run successful")"""
+print(data.to_latex())
+print("Script run successful")'''
