@@ -37,10 +37,8 @@ from sklearn.metrics import mean_squared_error
 
 Regressor='elasticnet'
 datasets=['eicu','hirid','mimic','miiv']
-grouping_column = 'hospital_id'
+grouping_column = 'region'
 
-
-########################### Check if region, hospital_id, services have now same size
 
 '''_data= load_data(f'parameters_{Regressor}_{grouping_column}')['mimic'].dropna()
 print(_data)
@@ -78,60 +76,6 @@ _Xydata={
     'miiv':load_data_parquet('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
 }
 
-def fit_and_extract_info(group_df, grouping_column, dataset):
-    if len(group_df)<8:
-        return None
-    search = GridSearchCV(Model[Regressor], param_grid= {key : value for key, value in hyper_params[Regressor].items()})
-    data=Preprocessor.fit_transform(group_data)
-    search.fit(data, group_df['outcome'])
-    # Extract alpha and l1_ratio from the best_params dictionary
-    best_params = search.best_params_
-    alpha = best_params['alpha']
-    l1_ratio = best_params['l1_ratio']
-    print(len(search.best_estimator_.feature_names_in_))
-    if len(search.best_estimator_.feature_names_in_)>=69:
-        # Extract coefficients and intercept from the fitted ElasticNet model
-        coefficients = search.best_estimator_.coef_
-        intercept = search.best_estimator_.intercept_
-        return {
-            f'{grouping_column}': group_df[grouping_column].iloc[0],  # Extract the group
-            'alpha': alpha,
-            'l1_ratio': l1_ratio,
-            'coefficients': coefficients,
-            'intercept': intercept,
-            'feature names': search.best_estimator_.feature_names_in_
-        }
-    else:
-        return None
-
-#print('Start grouped regression')
-
-
-if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # include not
-    grouped_dfs = {}
-    _params = {'eicu':{},
-                'hirid':{},
-                'mimic':{},
-                'miiv':{}
-    }
-    for dataset in datasets:
-        print(dataset)
-        missing_columns = []
-        grouped=_Xydata[dataset].groupby(by=grouping_column)
-        for group_name, group_data in grouped:
-            missing_cols = group_data.columns[group_data.isna().all()]
-            missing_columns.extend(missing_cols)
-        missing_columns=list(set(missing_columns))
-        print(missing_columns)
-        for column in missing_columns:
-            _Xydata[dataset][column] = np.nan
-
-        for group_name, group_data in grouped:
-            #print(group_data.columns[group_data.isna().all()])
-            _params[dataset][group_name]=fit_and_extract_info(group_data,grouping_column,dataset)
-        print()
-    save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
-
 def preprocessing(outcome, dataset_name): # drop all rows with missing sex and replace bool dtype as float dtype since numpy can't do calculus with bool values
     Xy_data=load_data_parquet(outcome,dataset_name)
     X=Preprocessor.fit_transform(Xy_data)
@@ -148,12 +92,71 @@ _Xdata={
     'miiv':preprocessing('hr','miiv')
 }
 
+missing_columns={}
+
+if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # include not
+    grouped_dfs = {}
+    _params = {'eicu':{},
+                'hirid':{},
+                'mimic':{},
+                'miiv':{}
+    }
+    for dataset in datasets:
+        print(dataset)
+        missing_columns[dataset] = []
+        grouped=_Xydata[dataset].groupby(by=grouping_column)
+        for group_name, group_data in grouped:
+            missing_cols = group_data.columns[group_data.isna().all()]
+            missing_columns[dataset].extend(missing_cols)
+        missing_columns[dataset]=list(set(missing_columns[dataset]))
+        print(f'missing columns: {missing_columns[dataset]}')
+
+        for group_name, group_data in grouped:
+            if len(group_data)<8:
+                _params[dataset][group_name]=None
+            else: 
+                search = GridSearchCV(Model[Regressor], param_grid= {key : value for key, value in hyper_params[Regressor].items()})
+                data = Preprocessor.fit_transform(group_data)
+                columns_to_drop = []
+                for column in data.columns:
+                    for missing_column in missing_columns[dataset]:
+                        if missing_column in column:
+                            columns_to_drop.append(column)
+                data.drop(columns=columns_to_drop, inplace=True)
+                search.fit(data, group_data['outcome'])
+
+                print(len(search.best_estimator_.feature_names_in_))
+                #print(search.best_estimator_.feature_names_in_)
+                # Extract coefficients and intercept from the fitted ElasticNet model
+                _params[dataset][group_name]={
+                    f'{grouping_column}': group_data[grouping_column].iloc[0],  # Extract the group
+                    'alpha': search.best_params_['alpha'],
+                    'l1_ratio': search.best_params_['l1_ratio'],
+                    'coefficients': search.best_estimator_.coef_,
+                    'intercept': search.best_estimator_.intercept_,
+                    'feature names': search.best_estimator_.feature_names_in_
+                }
+                print()
+    print()
+    save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
+
 
 ### Spezialisiert auf Predictions von eICU auf alles andere
 _params_model=load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].dropna().values
-print(_params_model)
+#print(_params_model)
 error=[] 
 for target in datasets:
+    print('missing columns',missing_columns[target])
+    print()
+    print(_Xdata[target].columns.to_list())
+    columns_to_drop = []
+    for column in _Xdata[target].columns:
+        for missing_column in missing_columns[target]:
+            if missing_column in column:
+                columns_to_drop.append(column)
+    #print(f'Columns to drop: {columns_to_drop[dataset]}')
+    _Xdata[target].drop(columns=columns_to_drop, inplace=True)
+    print('Columns to drop: ',columns_to_drop)
     r=len(_params_model)
     theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
     hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
@@ -166,15 +169,24 @@ for target in datasets:
     b = matrix(1.0)
     solution = solvers.qp(P, q, G, h, A, b)
     w = np.array(solution['x']).round(decimals=2).flatten()
+    print('Solution found but whhhhhh')
     # Set model parameters, intercept and penalization
     model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
     model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))])
     pipeline.named_steps['model'].coef_ = model_coef
     pipeline.named_steps['model'].intercept_ = model_intercept
-    
+    data = Preprocessor.fit_transform(_Xydata[target])
+    columns_to_drop = []
+    for column in data.columns:
+        for missing_column in missing_columns[target]:
+            if missing_column in column:
+                columns_to_drop.append(column)
+    ################################################################# Hat pipline features namen?
+    #print(f'Columns to drop: {columns_to_drop[dataset]}')
+    data.drop(columns=columns_to_drop, inplace=True)
     # Make predictions and calculate MSE
-    y_pred = pipeline.predict(_Xydata[target])
-    mse = mean_squared_error(_Xydata[target]['outcome'], y_pred)
+    y_pred = pipeline.predict(data)
+    mse = mean_squared_error(_Xydata['outcome'], y_pred)
     
     # Store results in the error list
     error.append({

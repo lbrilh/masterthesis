@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --time=00:15:00
-#SBATCH --job-name=Hospital
+#SBATCH --job-name=Region
 #SBATCH --output=output.txt
 #SBATCH --error=error.txt
 
