@@ -15,13 +15,7 @@ from copy import copy
 from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
-### to do: 
-#### - compare predictive performance with malte 
-#### - in built function that automatically does preprocessing and deletes columns of groups that have only nan
-#### - new groups
-##### - Age. Will magging identify the distributional shift? 
-
-
+### to do:
 #### - non-linear estimators (plug-in principle)
 ##### - LGBM
 ##### - Anchor + LGBM
@@ -30,12 +24,13 @@ from sklearn.metrics import mean_squared_error
 #### - Shared Lasso
 #### - Group DRO
 #### - Write Overleaf document for Malte
+#### - Compare predictive performance with malte
 # Ideen
 ## - Schau bei einzelnen Gruppen nach ob outlier oder ähnliches vorliegen
 ## - Schau histogram/Box plots der einzelnen Gruppen an ob da ein shift zu erkennen ist --> ggf. Methode zum estimaten innerhalb der Gruppen anpassen
 
 Regressor='elasticnet'
-grouping_column = 'region'
+grouping_column = 'age_group'
 
 
 hyper_params={
@@ -109,6 +104,13 @@ def find_nan_columns(grouping_column):
 
         labeld_columns[dataset]=[]
 
+        if True:
+            bins = [0, 19, 39, 65, float('inf')]
+            labels = ['child', 'young adults', 'middle age', 'senior']
+
+            # Use pd.cut to create a new 'age_group' column
+            _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+
         grouped=_Xydata[dataset].groupby(by=grouping_column)
 
         for group_name, group_data in grouped:
@@ -145,6 +147,15 @@ if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
     datasets=['eicu','hirid','mimic','miiv']
 
     for dataset in datasets:
+
+        if True:
+            bins = [0, 19, 39, 65, float('inf')]
+            labels = ['child', 'young adults', 'middle age', 'senior']
+
+            # Use pd.cut to create a new 'age_group' column
+            _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+            print(_Xydata[dataset]['age_group'])
+
 
         grouped=_Xydata[dataset].groupby(by=grouping_column)
 
@@ -196,6 +207,13 @@ for source in datasets:
 
         for target in datasets:
 
+            if True:
+                bins = [0, 19, 39, 65, float('inf')]
+                labels = ['child', 'young adults', 'middle age', 'senior']
+
+                # Use pd.cut to create a new 'age_group' column
+                _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+
             _ydata = _Xydata[target]['outcome']
 
             _Xdata = Preprocessor.fit_transform(_Xydata[target])
@@ -225,6 +243,7 @@ for source in datasets:
             b = matrix(1.0)
 
             solution = solvers.qp(P, q, G, h, A, b)
+            print(np.array(solution['x']).round(decimals=2))
             w = np.array(solution['x']).round(decimals=2).flatten() # magging weights
 
             # Calculate weighted model coefficients and weighted intercept
@@ -248,7 +267,7 @@ for source in datasets:
             })
 
         print(f'Feature coefficients from {source}')
-        print(pd.DataFrame(results)[['weights']].to_string())
+        #print(pd.DataFrame(results)[['weights']].to_string())
         print(pd.DataFrame(results).to_latex())
         print()
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --time=10:15:00
-#SBATCH --job-name=teachingstatus
+#SBATCH --job-name=AgeGroup
 #SBATCH --output=output.txt
 #SBATCH --error=error.txt
 
