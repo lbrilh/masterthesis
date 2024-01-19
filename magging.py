@@ -1,10 +1,12 @@
 from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
+from icu_experiments.constants import NUMERICAL_COLUMNS
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import ElasticNet
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 import numpy as np
 from scipy.linalg import eigvals
+import data
 from data import save_data, results_exist, load_data, load_data_plotting
 from itertools import combinations
 import pandas as pd
@@ -14,13 +16,10 @@ from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
 ### to do: 
-#### - compare predictive performance
-#### - generalize it 
+#### - compare predictive performance with malte 
 #### - in built function that automatically does preprocessing and deletes columns of groups that have only nan
 #### - new groups
 ##### - Age. Will magging identify the distributional shift? 
-##### - HospitalId
-#### - Check positive definiteness of matrix 
 
 
 #### - non-linear estimators (plug-in principle)
@@ -36,97 +35,140 @@ from sklearn.metrics import mean_squared_error
 ## - Schau histogram/Box plots der einzelnen Gruppen an ob da ein shift zu erkennen ist --> ggf. Methode zum estimaten innerhalb der Gruppen anpassen
 
 Regressor='elasticnet'
-datasets=['eicu','hirid','mimic','miiv']
 grouping_column = 'region'
 
 
-'''_data= load_data(f'parameters_{Regressor}_{grouping_column}')['mimic'].dropna()
-print(_data)
-raise ValueError'''
-
 hyper_params={
-    'elasticnet':{"alpha": [0.001, 1, 10, 100],
+    'elasticnet':{"alpha": [0.001, 0.00316, 0.01, 0.0316, 0.1, 0.316, 1, 3.16, 10, 31.6, 100],
                   "l1_ratio": [0, 0.2, 0.5, 0.8, 1]},
 }
+
 
 Model={
     'elasticnet':ElasticNet()
 }
 
+
 Preprocessor=ColumnTransformer(transformers=
                                 make_feature_preprocessing(missing_indicator=True)
                                 ).set_output(transform="pandas")
+
 
 pipeline = Pipeline(steps=[
     ('preprocessing', Preprocessor),
     ('model', Model[Regressor])
 ])
 
-def load_data_parquet(outcome, source, version='train'):
+
+def load_data(outcome, source, version='train'):
     current_directory = os.getcwd()
     relative_path = os.path.join('Parquet', f'{outcome}_data_{source}_{version}.parquet')
     file_path = os.path.join(current_directory, relative_path)
     _data = pd.read_parquet(file_path, engine='pyarrow')
     return _data 
 
+
+#Include only admissions with recorded sex
 _Xydata={
-    'eicu':load_data_parquet('hr','eicu')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
-    'hirid':load_data_parquet('hr','hirid')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
-    'mimic':load_data_parquet('hr','mimic')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
-    'miiv':load_data_parquet('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
+    'eicu':load_data('hr','eicu')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'hirid':load_data('hr','hirid')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'mimic':load_data('hr','mimic')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'miiv':load_data('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
 }
 
-def preprocessing(outcome, dataset_name): # drop all rows with missing sex and replace bool dtype as float dtype since numpy can't do calculus with bool values
-    Xy_data=load_data_parquet(outcome,dataset_name)
-    X=Preprocessor.fit_transform(Xy_data)
-    s=X.select_dtypes(include='bool').columns
-    X[s]=X[s].astype('float')
-    if dataset_name=='eicu':
-        X=X[X['categorical__sex_None']==0].drop(columns=['categorical__sex_None'])
-    return X
+def find_nan_columns(grouping_column):
+    """
+    Input
+    ----------
+    grouping_column: str
+        The grouping column
 
-_Xdata={
-    'eicu':preprocessing('hr','eicu'),
-    'hirid':preprocessing('hr','hirid'),
-    'mimic':preprocessing('hr','mimic'),
-    'miiv':preprocessing('hr','miiv')
-}
+    Output
+    ----------
+    labeld_columns: dict
+        The columns which consist only of missing values after grouping and added prefix numeric & missing_indicator
+    """
 
-missing_columns={}
+    datasets=['eicu','hirid','mimic','miiv']
 
-if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # include not
-    grouped_dfs = {}
+    # Include only admissions with recoreded sex
+    _Xydata={
+    'eicu':load_data('hr','eicu')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'hirid':load_data('hr','hirid')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'mimic':load_data('hr','mimic')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
+    'miiv':load_data('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
+    }
+
+    missing_columns={} # missing value columns after grouping
+
+    labeld_columns={} # missing value columns that include numeric and missing_indicator as prefix
+
+    for dataset in datasets:
+
+        missing_columns[dataset] = []
+
+        labeld_columns[dataset]=[]
+
+        grouped=_Xydata[dataset].groupby(by=grouping_column)
+
+        for group_name, group_data in grouped:
+            missing_cols = group_data.columns[group_data.isna().all()]
+            missing_columns[dataset].extend(missing_cols)
+
+        missing_columns[dataset]=list(set(missing_columns[dataset]))
+
+        for column in missing_columns[dataset]:
+
+            if column in NUMERICAL_COLUMNS:
+                labeld_columns[dataset].append(f'numeric__{column}')
+                labeld_columns[dataset].append(f'missing_indicator__missingindicator_{column}')
+        
+        print(f'In the dataset {dataset} the columns {labeld_columns[dataset]} will be dropped after the preprocessing')
+
+    return labeld_columns
+
+
+if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
+
+    """
+
+    Calculate the feature parameters within each group. Any columns that may contain missing value columns are dropped.
+
+    """
+    # The parameter vector for each dataset
     _params = {'eicu':{},
                 'hirid':{},
                 'mimic':{},
                 'miiv':{}
     }
+
+    datasets=['eicu','hirid','mimic','miiv']
+
     for dataset in datasets:
-        print(dataset)
-        missing_columns[dataset] = []
+
         grouped=_Xydata[dataset].groupby(by=grouping_column)
-        for group_name, group_data in grouped:
-            missing_cols = group_data.columns[group_data.isna().all()]
-            missing_columns[dataset].extend(missing_cols)
-        missing_columns[dataset]=list(set(missing_columns[dataset]))
-        print(f'missing columns: {missing_columns[dataset]}')
 
         for group_name, group_data in grouped:
+            
+            # Skip all groups with less than 8 observations
             if len(group_data)<8:
-                _params[dataset][group_name]=None
-            else: 
-                search = GridSearchCV(Model[Regressor], param_grid= {key : value for key, value in hyper_params[Regressor].items()})
-                data = Preprocessor.fit_transform(group_data)
-                columns_to_drop = []
-                for column in data.columns:
-                    for missing_column in missing_columns[dataset]:
-                        if missing_column in column:
-                            columns_to_drop.append(column)
-                data.drop(columns=columns_to_drop, inplace=True)
-                search.fit(data, group_data['outcome'])
 
-                print(len(search.best_estimator_.feature_names_in_))
-                #print(search.best_estimator_.feature_names_in_)
+                _params[dataset][group_name]=None
+
+            else: 
+
+                search = GridSearchCV(Model[Regressor], param_grid= {key : value for key, value in hyper_params[Regressor].items()})
+
+                _ydata = group_data['outcome']
+                _Xdata = Preprocessor.fit_transform(group_data)
+
+                # drop any column that has a missing value column in at least one group
+                for column in find_nan_columns(grouping_column)[dataset]:
+                    if column in _Xdata.columns:
+                        _Xdata.drop(columns=column, inplace=True)
+
+                search.fit(_Xdata, _ydata)
+
                 # Extract coefficients and intercept from the fitted ElasticNet model
                 _params[dataset][group_name]={
                     f'{grouping_column}': group_data[grouping_column].iloc[0],  # Extract the group
@@ -136,68 +178,79 @@ if results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'): # in
                     'intercept': search.best_estimator_.intercept_,
                     'feature names': search.best_estimator_.feature_names_in_
                 }
-                print()
-    print()
+
     save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
 
 
-### Spezialisiert auf Predictions von eICU auf alles andere
-_params_model=load_data(f'parameters_{Regressor}_{grouping_column}')['eicu'].dropna().values
-#print(_params_model)
-error=[] 
-for target in datasets:
-    print('missing columns',missing_columns[target])
-    print()
-    print(_Xdata[target].columns.to_list())
-    columns_to_drop = []
-    for column in _Xdata[target].columns:
-        for missing_column in missing_columns[target]:
-            if missing_column in column:
-                columns_to_drop.append(column)
-    #print(f'Columns to drop: {columns_to_drop[dataset]}')
-    _Xdata[target].drop(columns=columns_to_drop, inplace=True)
-    print('Columns to drop: ',columns_to_drop)
-    r=len(_params_model)
-    theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
-    hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
-    H = (theta.T @ hatS @ theta).values # needs to be positive definite
-    P = matrix(2 * H)
-    q = matrix(np.zeros(r))
-    G = matrix(-np.eye(r))
-    h = matrix(np.zeros(r))
-    A = matrix(1.0, (1, r))
-    b = matrix(1.0)
-    solution = solvers.qp(P, q, G, h, A, b)
-    w = np.array(solution['x']).round(decimals=2).flatten()
-    print('Solution found but whhhhhh')
-    # Set model parameters, intercept and penalization
-    model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
-    model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))])
-    pipeline.named_steps['model'].coef_ = model_coef
-    pipeline.named_steps['model'].intercept_ = model_intercept
-    data = Preprocessor.fit_transform(_Xydata[target])
-    columns_to_drop = []
-    for column in data.columns:
-        for missing_column in missing_columns[target]:
-            if missing_column in column:
-                columns_to_drop.append(column)
-    ################################################################# Hat pipline features namen?
-    #print(f'Columns to drop: {columns_to_drop[dataset]}')
-    data.drop(columns=columns_to_drop, inplace=True)
-    # Make predictions and calculate MSE
-    y_pred = pipeline.predict(data)
-    mse = mean_squared_error(_Xydata['outcome'], y_pred)
-    
-    # Store results in the error list
-    error.append({
-        'target': target,
-        'mse': round(mse,2),
-        'weights': w,
-    })
-print(pd.DataFrame(error))
-print(pd.DataFrame(error)[['weights']].to_string())
-print(pd.DataFrame(error).to_latex())
-save_data(path=f'magging_{Regressor}_{grouping_column}_results.parquet',results=error)
+datasets=['eicu','hirid','mimic','miiv']
+
+_parameters_file=data.load_data(f'parameters_{Regressor}_{grouping_column}')
+
+for source in datasets: 
+
+    if len(_Xydata[source].groupby(grouping_column))>1:
+        
+        _params_model=_parameters_file[source].dropna().values # All groups with no calculated parameters are skipped
+
+        results=[] 
+
+        for target in datasets:
+
+            _ydata = _Xydata[target]['outcome']
+
+            _Xdata = Preprocessor.fit_transform(_Xydata[target])
+
+            # Convert bool dtypes to float dtypes for matrix operations
+            s=_Xdata.select_dtypes(include='bool').columns
+            _Xdata[s]=_Xdata[s].astype('float')
+
+            for column in find_nan_columns(grouping_column)[source]:
+                if column in _Xdata.columns:
+                    _Xdata.drop(columns=column, inplace=True)
+
+            r=len(_params_model)
+            theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
+            hatS = _Xdata.T @ _Xdata / _Xdata.shape[0]
+            H = (theta.T @ hatS @ theta).values 
+
+            if not all(np.linalg.eigvals(H) > 0): # H needs to be positive definite
+                print("Attention: Matrix H is not positive definite")
+                H += 1e-5
+            
+            P = matrix(2 * H)
+            q = matrix(np.zeros(r))
+            G = matrix(-np.eye(r))
+            h = matrix(np.zeros(r))
+            A = matrix(1.0, (1, r))
+            b = matrix(1.0)
+
+            solution = solvers.qp(P, q, G, h, A, b)
+            w = np.array(solution['x']).round(decimals=2).flatten() # magging weights
+
+            # Calculate weighted model coefficients and weighted intercept
+            model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
+            model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))], axis=0)
+
+            # Set model parameters and intercept
+            Model[Regressor].coef_ = model_coef
+            Model[Regressor].intercept_ = model_intercept
+
+
+            # Make predictions and calculate MSE
+            y_pred = Model[Regressor].predict(_Xdata)
+            mse = mean_squared_error(_ydata, y_pred)
+
+            # Store results
+            results.append({
+                'target': target,
+                'mse': round(mse,2),
+                'weights': w,
+            })
+
+        print(f'Feature coefficients from {source}')
+        print(pd.DataFrame(results)[['weights']].to_string())
+        print(pd.DataFrame(results).to_latex())
+        print()
 
 
 '''
