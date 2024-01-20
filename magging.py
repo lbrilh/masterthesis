@@ -16,6 +16,12 @@ from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
 ### to do:
+#### - write Overleaf document
+#### - Look at predictive performance within groups
+#### - Look at Bühlmann instructions from beginning
+#### - implement maybe one or two here 
+
+
 #### - non-linear estimators (plug-in principle)
 ##### - LGBM
 ##### - Anchor + LGBM
@@ -31,11 +37,11 @@ from sklearn.metrics import mean_squared_error
 
 Regressor='elasticnet'
 grouping_column = 'age_group'
-
+age_group = True
 
 hyper_params={
     'elasticnet':{"alpha": [0.001, 0.00316, 0.01, 0.0316, 0.1, 0.316, 1, 3.16, 10, 31.6, 100],
-                  "l1_ratio": [0, 0.2, 0.5, 0.8, 1]},
+                 "l1_ratio": [0, 0.2, 0.5, 0.8, 1]},
 }
 
 
@@ -104,8 +110,8 @@ def find_nan_columns(grouping_column):
 
         labeld_columns[dataset]=[]
 
-        if True:
-            bins = [0, 19, 39, 65, float('inf')]
+        if age_group:
+            bins = [0, 15, 39, 65, float('inf')]
             labels = ['child', 'young adults', 'middle age', 'senior']
 
             # Use pd.cut to create a new 'age_group' column
@@ -148,8 +154,8 @@ if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
 
     for dataset in datasets:
 
-        if True:
-            bins = [0, 19, 39, 65, float('inf')]
+        if age_group:
+            bins = [0, 15, 39, 65, float('inf')]
             labels = ['child', 'young adults', 'middle age', 'senior']
 
             # Use pd.cut to create a new 'age_group' column
@@ -199,64 +205,75 @@ _parameters_file=data.load_data(f'parameters_{Regressor}_{grouping_column}')
 
 for source in datasets: 
 
+    if age_group:
+        bins = [0, 15, 39, 65, float('inf')]
+        labels = ['child', 'young adults', 'middle age', 'senior']
+
+        # Use pd.cut to create a new 'age_group' column
+        _Xydata[source]['age_group'] = pd.cut(_Xydata[source]['age'], bins=bins, labels=labels, right=False)
+
+
     if len(_Xydata[source].groupby(grouping_column))>1:
+
+        if age_group: 
+            _Xydata[source].drop(columns='age_group',inplace=True)
         
         _params_model=_parameters_file[source].dropna().values # All groups with no calculated parameters are skipped
 
         results=[] 
 
+        _Xdata = Preprocessor.fit_transform(_Xydata[source])
+
+        # Convert bool dtypes to float dtypes for matrix operations
+        s=_Xdata.select_dtypes(include='bool').columns
+        _Xdata[s]=_Xdata[s].astype('int')
+
+        for column in find_nan_columns(grouping_column)[source]:
+            if column in _Xdata.columns:
+                _Xdata.drop(columns=column, inplace=True)
+
+        r=len(_params_model)
+        print([(_params_model[i])[grouping_column] for i in range(len(_params_model))])
+        theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
+        hatS = _Xdata.T @ _Xdata / _Xdata.shape[0]
+        H = (theta.T @ hatS @ theta).values 
+
+        if not all(np.linalg.eigvals(H) > 0): # H needs to be positive definite
+            print("Attention: Matrix H is not positive definite")
+            H += 1e-5
+        
+        P = matrix(H)
+        q = matrix(np.zeros(r))
+        G = matrix(-np.eye(r))
+        h = matrix(np.zeros(r))
+        A = matrix(1.0, (1, r))
+        b = matrix(1.0)
+
+        solution = solvers.qp(P, q, G, h, A, b)
+        print(np.array(solution['x']).round(decimals=2))
+        w = np.array(solution['x']).round(decimals=2).flatten() # magging weights
+
+        # Calculate weighted model coefficients and weighted intercept
+        model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
+        model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))], axis=0)
+
+        # Set model parameters and intercept
+        Model[Regressor].coef_ = model_coef
+        Model[Regressor].intercept_ = model_intercept
+
         for target in datasets:
 
-            if True:
-                bins = [0, 19, 39, 65, float('inf')]
-                labels = ['child', 'young adults', 'middle age', 'senior']
+            _Xtarget = Preprocessor.fit_transform(_Xydata[target])
 
-                # Use pd.cut to create a new 'age_group' column
-                _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+            for column in find_nan_columns(grouping_column)[source]:
+                if column in _Xtarget.columns:
+                    _Xtarget.drop(columns=column, inplace=True)
+
+            # Make predictions and calculate MSE
+            y_pred = Model[Regressor].predict(_Xtarget)
 
             _ydata = _Xydata[target]['outcome']
 
-            _Xdata = Preprocessor.fit_transform(_Xydata[target])
-
-            # Convert bool dtypes to float dtypes for matrix operations
-            s=_Xdata.select_dtypes(include='bool').columns
-            _Xdata[s]=_Xdata[s].astype('float')
-
-            for column in find_nan_columns(grouping_column)[source]:
-                if column in _Xdata.columns:
-                    _Xdata.drop(columns=column, inplace=True)
-
-            r=len(_params_model)
-            theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
-            hatS = _Xdata.T @ _Xdata / _Xdata.shape[0]
-            H = (theta.T @ hatS @ theta).values 
-
-            if not all(np.linalg.eigvals(H) > 0): # H needs to be positive definite
-                print("Attention: Matrix H is not positive definite")
-                H += 1e-5
-            
-            P = matrix(2 * H)
-            q = matrix(np.zeros(r))
-            G = matrix(-np.eye(r))
-            h = matrix(np.zeros(r))
-            A = matrix(1.0, (1, r))
-            b = matrix(1.0)
-
-            solution = solvers.qp(P, q, G, h, A, b)
-            print(np.array(solution['x']).round(decimals=2))
-            w = np.array(solution['x']).round(decimals=2).flatten() # magging weights
-
-            # Calculate weighted model coefficients and weighted intercept
-            model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
-            model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))], axis=0)
-
-            # Set model parameters and intercept
-            Model[Regressor].coef_ = model_coef
-            Model[Regressor].intercept_ = model_intercept
-
-
-            # Make predictions and calculate MSE
-            y_pred = Model[Regressor].predict(_Xdata)
             mse = mean_squared_error(_ydata, y_pred)
 
             # Store results
@@ -271,8 +288,10 @@ for source in datasets:
         print(pd.DataFrame(results).to_latex())
         print()
 
-
 '''
+
+datasets=['eicu','hirid','mimic','miiv']
+
 # Find penalization parameter on all datasets
 if not results_exist(f'parameters_{Regressor}_data.parquet'):
     params = []
@@ -291,7 +310,7 @@ if not results_exist(f'parameters_{Regressor}_data.parquet'):
     save_data(path=f'parameters_{Regressor}_data.parquet',results=params)
 
 print('GridCV done')
-_params_model=load_data(f'parameters_{Regressor}') 
+_params_model=data.load_data(f'parameters_{Regressor}') 
 
 _params={
     'eicu':{'parameters':_params_model['Parameters on eicu'][0],
@@ -299,13 +318,13 @@ _params={
             'alpha':_params_model['intercept'][0],
             'l1_ratio':_params_model['l1_ratio'][0]},
     'hirid':{'parameters':_params_model['Parameters on hirid'][1],
-             'intercept':_params_model['intercept'][1],
-             'alpha':_params_model['intercept'][1],
-             'l1_ratio':_params_model['l1_ratio'][1]},
+            'intercept':_params_model['intercept'][1],
+            'alpha':_params_model['intercept'][1],
+            'l1_ratio':_params_model['l1_ratio'][1]},
     'mimic':{'parameters':_params_model['Parameters on mimic'][2],
-             'intercept':_params_model['intercept'][2],
-             'alpha':_params_model['intercept'][2],
-             'l1_ratio':_params_model['l1_ratio'][2]},
+            'intercept':_params_model['intercept'][2],
+            'alpha':_params_model['intercept'][2],
+            'l1_ratio':_params_model['l1_ratio'][2]},
     'miiv':{'parameters':_params_model['Parameters on miiv'][3],
             'intercept':_params_model['intercept'][3],
             'alpha':_params_model['intercept'][3],
@@ -316,7 +335,7 @@ _params={
 error=[] 
 
 for target in datasets:
-    data = _Xydata[target]
+    data = Preprocessor.fit_transform(_Xydata[target])
     
     # Handle combinations of groups
     for r in range(1, len(datasets)):
@@ -324,7 +343,11 @@ for target in datasets:
             if target not in group_combination:
                 # Calculate weights for the selected groups
                 theta = np.column_stack([_params[group]['parameters'] for group in group_combination])
-                hatS = _Xdata[target].T @ _Xdata[target] / _Xdata[target].shape[0]
+                _Xdata = pd.concat([Preprocessor.fit_transform(_Xydata[group]) for group in group_combination])
+                # Convert bool dtypes to float dtypes for matrix operations
+                s = _Xdata.select_dtypes(include='bool').columns
+                _Xdata[s] = _Xdata[s].astype('int')
+                hatS = _Xdata.T @ _Xdata / _Xdata.shape[0]
                 H = (theta.T @ hatS @ theta).values # needs to be positive definite
                 P = matrix(2 * H)
                 q = matrix(np.zeros(r))
@@ -337,13 +360,13 @@ for target in datasets:
                 
                 # Set model parameters, intercept and penalization
                 model_coef = np.sum([w[i] * _params[group]['parameters'] for i, group in enumerate(group_combination)], axis=0)                
-                model_intercept = np.sum([w[i] * _params[group]['intercept'] for i, group in enumerate(group_combination)])
-                pipeline.named_steps['model'].coef_ = model_coef
-                pipeline.named_steps['model'].intercept_ = model_intercept
+                model_intercept = np.sum([w[i] * _params[group]['intercept'] for i, group in enumerate(group_combination)], axis=0)
+                Model[Regressor].coef_ = model_coef
+                Model[Regressor].intercept_ = model_intercept
                 
                 # Make predictions and calculate MSE
-                y_pred = pipeline.predict(data)
-                mse = mean_squared_error(data['outcome'], y_pred)
+                y_pred = Model[Regressor].predict(data)
+                mse = mean_squared_error(_Xydata[target]['outcome'], y_pred)
                 
                 # Store results in the error list
                 error.append({
@@ -354,7 +377,8 @@ for target in datasets:
                     'mse': round(mse,2),
                     'weights': w
                 })
-save_data(path=f'magging_{Regressor}_results.parquet',results=error)
-data=load_data_plotting(path=f"Parquet/magging_{Regressor}_results.parquet")
-print(data.to_latex())
-print("Script run successful")'''
+
+print(pd.DataFrame(error).to_latex())
+print()
+
+print("Script run successful") '''
