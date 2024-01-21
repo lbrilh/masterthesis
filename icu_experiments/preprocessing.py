@@ -93,7 +93,8 @@ def make_anchor_preprocessing(anchor_columns=None):
 
     return column_transformer
 
-def make_feature_preprocessing(missing_indicator=True, categorical_indicator=True):
+
+def make_feature_preprocessing(missing_indicator=True, categorical_indicator=True, lgbm=False):
     """Make preprocessing for features."""
     if categorical_indicator: 
         preprocessors = [
@@ -105,6 +106,30 @@ def make_feature_preprocessing(missing_indicator=True, categorical_indicator=Tru
                         ("scale", StandardScaler()),
                     ]
                 ),
+                NUMERICAL_COLUMNS,
+            ),
+            (
+                "categorical",
+                Pipeline(
+                    [
+                        (
+                            "impute",
+                            SimpleImputer(strategy="constant", fill_value="missing"),
+                        ),
+                        (
+                            "encode",
+                            OneHotEncoder(handle_unknown="ignore", sparse_output=False),
+                        ),
+                    ]
+                ),
+                CATEGORICAL_COLUMNS,
+            ),
+        ]
+    elif lgbm:
+        preprocessors = [
+            (
+                "numeric",
+                FunctionTransformer(func=lambda X: pd.DataFrame(X), validate=False),
                 NUMERICAL_COLUMNS,
             ),
             (

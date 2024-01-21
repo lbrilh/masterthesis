@@ -11,48 +11,51 @@ from data import save_data, results_exist, load_data, load_data_plotting
 from itertools import combinations
 import pandas as pd
 import os 
+from lightgbm import LGBMRegressor
 from copy import copy
 from cvxopt import matrix, solvers
 from sklearn.metrics import mean_squared_error
 
 ### to do:
-#### - write Overleaf document
 #### - Look at predictive performance within groups
 #### - Look at Bühlmann instructions from beginning
 #### - implement maybe one or two here 
 
 
 #### - non-linear estimators (plug-in principle)
-##### - LGBM
 ##### - Anchor + LGBM
 #### - Plotting
 #### - Make GitHub look nice
 #### - Shared Lasso
 #### - Group DRO
-#### - Write Overleaf document for Malte
-#### - Compare predictive performance with malte
 # Ideen
 ## - Schau bei einzelnen Gruppen nach ob outlier oder ähnliches vorliegen
 ## - Schau histogram/Box plots der einzelnen Gruppen an ob da ein shift zu erkennen ist --> ggf. Methode zum estimaten innerhalb der Gruppen anpassen
 
-Regressor='elasticnet'
-grouping_column = 'age_group'
-age_group = True
+Regressor='lgbm'
+grouping_column = 'numbedscategory'
+age_group = False
 
 hyper_params={
     'elasticnet':{"alpha": [0.001, 0.00316, 0.01, 0.0316, 0.1, 0.316, 1, 3.16, 10, 31.6, 100],
                  "l1_ratio": [0, 0.2, 0.5, 0.8, 1]},
+    'lgbm': {
+        'boosting_type': ['gbdt'],
+        'num_leaves': [20, 30, 40],
+        'learning_rate': [0.01, 0.1, 0.2],
+        'n_estimators': [100, 200, 300]}
 }
 
 
 Model={
-    'elasticnet':ElasticNet()
+    'elasticnet':ElasticNet(),
+    'lgbm': LGBMRegressor(),
 }
 
 
-Preprocessor=ColumnTransformer(transformers=
-                                make_feature_preprocessing(missing_indicator=True)
-                                ).set_output(transform="pandas")
+Preprocessor = ColumnTransformer(
+    transformers=make_feature_preprocessing(missing_indicator=False, categorical_indicator=False, lgbm=True)
+    ).set_output(transform="pandas")
 
 
 pipeline = Pipeline(steps=[
@@ -144,7 +147,7 @@ if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
 
     """
     # The parameter vector for each dataset
-    _params = {'eicu':{},
+    _models = {'eicu':{},
                 'hirid':{},
                 'mimic':{},
                 'miiv':{}
@@ -170,123 +173,129 @@ if not results_exist(f'parameters_{Regressor}_{grouping_column}_data.parquet'):
             # Skip all groups with less than 8 observations
             if len(group_data)<8:
 
-                _params[dataset][group_name]=None
+                _models[dataset][group_name]=None
 
             else: 
 
                 search = GridSearchCV(Model[Regressor], param_grid= {key : value for key, value in hyper_params[Regressor].items()})
 
-                _ydata = group_data['outcome']
-                _Xdata = Preprocessor.fit_transform(group_data)
+                _ydata_group = group_data['outcome']
+                _Xdata_group = Preprocessor.fit_transform(group_data)
 
-                # drop any column that has a missing value column in at least one group
-                for column in find_nan_columns(grouping_column)[dataset]:
-                    if column in _Xdata.columns:
-                        _Xdata.drop(columns=column, inplace=True)
+                if Regressor == 'elasticnet':
+                    # drop any column that has a missing value column in at least one group
+                    for column in find_nan_columns(grouping_column)[dataset]:
+                        if column in _Xdata_group.columns:
+                            _Xdata_group.drop(columns=column, inplace=True)
 
-                search.fit(_Xdata, _ydata)
+                search.fit(_Xdata_group, _ydata_group)
+
+
+                _Xdata = Preprocessor.fit_transform(_Xydata[dataset])
+                _ypredict = search.predict(_Xdata)
 
                 # Extract coefficients and intercept from the fitted ElasticNet model
-                _params[dataset][group_name]={
+                _models[dataset][group_name]={
                     f'{grouping_column}': group_data[grouping_column].iloc[0],  # Extract the group
-                    'alpha': search.best_params_['alpha'],
-                    'l1_ratio': search.best_params_['l1_ratio'],
-                    'coefficients': search.best_estimator_.coef_,
-                    'intercept': search.best_estimator_.intercept_,
-                    'feature names': search.best_estimator_.feature_names_in_
+                    'y_predict': _ypredict,
+                    'model': search.best_estimator_  # Store the entire fitted model
                 }
 
-    save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_params)
+    #save_data(path=f'parameters_{Regressor}_{grouping_column}_data.parquet',results=_models)
+
+#datasets=['eicu','hirid','mimic','miiv']
+
+#_models_file=data.load_data(f'parameters_{Regressor}_{grouping_column}')
+    _dfmodels = pd.DataFrame(_models)
+
+    for source in datasets: 
+
+        if age_group:
+            bins = [0, 15, 39, 65, float('inf')]
+            labels = ['child', 'young adults', 'middle age', 'senior']
+
+            # Use pd.cut to create a new 'age_group' column
+            _Xydata[source]['age_group'] = pd.cut(_Xydata[source]['age'], bins=bins, labels=labels, right=False)
 
 
-datasets=['eicu','hirid','mimic','miiv']
+        if len(_Xydata[source].groupby(grouping_column))>1:
 
-_parameters_file=data.load_data(f'parameters_{Regressor}_{grouping_column}')
+            if age_group: 
+                _Xydata[source].drop(columns='age_group',inplace=True)
+            
+            _predictions=_dfmodels[source].dropna().values # All groups with no calculated parameters are skipped
 
-for source in datasets: 
+            results=[] 
 
-    if age_group:
-        bins = [0, 15, 39, 65, float('inf')]
-        labels = ['child', 'young adults', 'middle age', 'senior']
-
-        # Use pd.cut to create a new 'age_group' column
-        _Xydata[source]['age_group'] = pd.cut(_Xydata[source]['age'], bins=bins, labels=labels, right=False)
-
-
-    if len(_Xydata[source].groupby(grouping_column))>1:
-
-        if age_group: 
-            _Xydata[source].drop(columns='age_group',inplace=True)
-        
-        _params_model=_parameters_file[source].dropna().values # All groups with no calculated parameters are skipped
-
-        results=[] 
-
-        _Xdata = Preprocessor.fit_transform(_Xydata[source])
-
-        # Convert bool dtypes to float dtypes for matrix operations
-        s=_Xdata.select_dtypes(include='bool').columns
-        _Xdata[s]=_Xdata[s].astype('int')
-
-        for column in find_nan_columns(grouping_column)[source]:
-            if column in _Xdata.columns:
-                _Xdata.drop(columns=column, inplace=True)
-
-        r=len(_params_model)
-        print([(_params_model[i])[grouping_column] for i in range(len(_params_model))])
-        theta = np.column_stack([(_params_model[i])['coefficients'] for i in range(len(_params_model))])
-        hatS = _Xdata.T @ _Xdata / _Xdata.shape[0]
-        H = (theta.T @ hatS @ theta).values 
-
-        if not all(np.linalg.eigvals(H) > 0): # H needs to be positive definite
-            print("Attention: Matrix H is not positive definite")
-            H += 1e-5
-        
-        P = matrix(H)
-        q = matrix(np.zeros(r))
-        G = matrix(-np.eye(r))
-        h = matrix(np.zeros(r))
-        A = matrix(1.0, (1, r))
-        b = matrix(1.0)
-
-        solution = solvers.qp(P, q, G, h, A, b)
-        print(np.array(solution['x']).round(decimals=2))
-        w = np.array(solution['x']).round(decimals=2).flatten() # magging weights
-
-        # Calculate weighted model coefficients and weighted intercept
-        model_coef = np.sum([w[i] * (_params_model[i])['coefficients'] for i in range(len(_params_model))], axis=0)
-        model_intercept = np.sum([w[i] * (_params_model[i])['intercept'] for i in range(len(_params_model))], axis=0)
-
-        # Set model parameters and intercept
-        Model[Regressor].coef_ = model_coef
-        Model[Regressor].intercept_ = model_intercept
-
-        for target in datasets:
-
-            _Xtarget = Preprocessor.fit_transform(_Xydata[target])
+            _Xdata = Preprocessor.fit_transform(_Xydata[source])
 
             for column in find_nan_columns(grouping_column)[source]:
-                if column in _Xtarget.columns:
-                    _Xtarget.drop(columns=column, inplace=True)
+                if column in _Xdata.columns:
+                    _Xdata.drop(columns=column, inplace=True)
 
-            # Make predictions and calculate MSE
-            y_pred = Model[Regressor].predict(_Xtarget)
+            r=len(_predictions)
+            print([_predictions[i][grouping_column] for i in range(len(_predictions))])
+            fhat = np.column_stack([(_predictions[i])['y_predict'] for i in range(len(_predictions))])
+            print(fhat)
+            H = fhat.T @ fhat / _Xdata.shape[0]
+            print(H)
 
-            _ydata = _Xydata[target]['outcome']
+            if not all(np.linalg.eigvals(H) > 0): # H needs to be positive definite
+                print("Attention: Matrix H is not positive definite")
+                H += 1e-5
+            
+            P = matrix(H)
+            q = matrix(np.zeros(r))
+            G = matrix(-np.eye(r))
+            h = matrix(np.zeros(r))
+            A = matrix(1.0, (1, r))
+            b = matrix(1.0)
 
-            mse = mean_squared_error(_ydata, y_pred)
+            solution = solvers.qp(P, q, G, h, A, b)
+            w = np.array(solution['x']).round(decimals=2).flatten() # magging weights
+            print(w)
 
-            # Store results
-            results.append({
-                'target': target,
-                'mse': round(mse,2),
-                'weights': w,
-            })
+            for target in datasets:
 
-        print(f'Feature coefficients from {source}')
-        #print(pd.DataFrame(results)[['weights']].to_string())
-        print(pd.DataFrame(results).to_latex())
-        print()
+                print(target)
+
+                _Xtarget = Preprocessor.fit_transform(_Xydata[target])
+
+                if Regressor == 'elasticnet':
+                    for column in find_nan_columns(grouping_column)[source]:
+                        if column in _Xtarget.columns:
+                            _Xtarget.drop(columns=column, inplace=True)
+
+                # Make predictions and calculate MSE
+                loaded_model_preds = []
+
+                for i in range(len(_predictions)):
+                    # Load the stored model for this group
+                    loaded_model = _predictions[i]['model']
+
+                    # Calculate predictions using the loaded model
+                    y_pred_loaded = loaded_model.predict(_Xtarget)
+
+                    # Add the predictions to the list, weighted by the corresponding weights
+                    loaded_model_preds.append(w[i] * y_pred_loaded)
+
+                # Calculate the final prediction by summing up the weighted predictions
+                y_pred = np.sum(loaded_model_preds, axis=0)
+
+                _ydata = _Xydata[target]['outcome']
+
+                mse = mean_squared_error(_ydata, y_pred)
+
+                # Store results
+                results.append({
+                    'target': target,
+                    'mse': round(mse,2)
+                })
+
+            print(f'Feature coefficients from {source}')
+            #print(pd.DataFrame(results)[['weights']].to_string())
+            print(pd.DataFrame(results).to_latex())
+            print()
 
 '''
 
