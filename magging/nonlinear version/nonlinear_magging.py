@@ -5,9 +5,6 @@ current_script_dir = os.path.dirname(os.path.abspath(__file__))
 
 root_dir = os.path.abspath(os.path.join(current_script_dir, '..', '..'))
 
-print(current_script_dir)
-raise ValueError
-
 sys.path.append(root_dir)
 
 from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
@@ -43,7 +40,7 @@ import re
 ######################### ALL Paths need to be adjusted
 
 Regressor='lgbm'
-grouping_column = 'numbedscategory'
+grouping_column = 'region'
 age_group = True
 
 hyper_params={
@@ -163,7 +160,7 @@ for source in datasets:
         _predictions=_dfmodels[source].dropna().values # All groups with no calculated parameters are skipped
 
         results=[] 
-
+        
         _Xdata = Preprocessor.fit_transform(_Xydata[source])
 
         r=len(_predictions)
