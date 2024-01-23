@@ -1,0 +1,6 @@
+/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/preprocessing/_function_transformer.py:345: UserWarning: With transform="pandas", `func` should return a DataFrame to follow the set_output API.
+  warnings.warn(
+
+real	0m13.583s
+user	0m12.296s
+sys	0m0.571s
