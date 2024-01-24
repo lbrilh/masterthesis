@@ -18,21 +18,6 @@ import pandas as pd
 from lightgbm import LGBMRegressor
 from sklearn.metrics import mean_squared_error
 
-'''
-ToDo Section: 
-- Look at predictive performance within groups
-- Look at Bühlmann instructions from beginning
-- implement maybe one or two here 
-- Make GitHub look nice
-- Shared Lasso
-- Group DRO
-
-Ideen: 
-- Schau bei einzelnen Gruppen nach ob outlier o.Ä. vorliegen
-- Schau histogram / box plots der einzelnen Gruppen an ob da ein shift zu erkennen ist --> ggf. Methode zum estimaten innerhalb der Gruppe anpassen
-
-'''
-
 Regressor='lgbm'
 grouping_column = 'region'
 age_group = True
@@ -92,17 +77,6 @@ if age_group:
 
         # Use pd.cut to create a new 'age_group' column
         _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
-
-
-# Define a custom function to find columns with all missing values
-def columns_with_missing(group):
-    return group.columns[group.isnull().all()]
-
-# Group your data by 'ethnic' and apply the custom function to each group
-result = _Xydata['eicu'].groupby(by='numbedscategory').apply(columns_with_missing)
-print(result.to_list())
-
-raise ValueError
 
 if os.path.exists(parameters_file):
     loaded_data = pd.read_parquet(parameters_file, engine='pyarrow')
