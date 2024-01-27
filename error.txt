@@ -1,6 +1,46 @@
-/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/preprocessing/_function_transformer.py:345: UserWarning: With transform="pandas", `func` should return a DataFrame to follow the set_output API.
-  warnings.warn(
+Traceback (most recent call last):
+  File "/cluster/home/lucabri/masterthesis/magging/experiments.py", line 232, in <module>
+    _ypred = magging.predict(weights, _Xydata[test_source], pipeline, parameters_file, train_source)
+  File "/cluster/home/lucabri/masterthesis/magging/magging.py", line 174, in predict
+    y_pred_loaded = loaded_model.predict(_Xtarget)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/pipeline.py", line 514, in predict
+    Xt = transform.transform(Xt)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/utils/_set_output.py", line 157, in wrapped
+    data_to_wrap = f(self, X, *args, **kwargs)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/compose/_column_transformer.py", line 827, in transform
+    Xs = self._fit_transform(
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/compose/_column_transformer.py", line 681, in _fit_transform
+    return Parallel(n_jobs=self.n_jobs)(
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/utils/parallel.py", line 65, in __call__
+    return super().__call__(iterable_with_config)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/joblib/parallel.py", line 1863, in __call__
+    return output if self.return_generator else list(output)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/joblib/parallel.py", line 1789, in _get_sequential_output
+    for func, args, kwargs in iterable:
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/utils/parallel.py", line 61, in <genexpr>
+    iterable_with_config = (
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/compose/_column_transformer.py", line 684, in <genexpr>
+    X=_safe_indexing(X, column, axis=1),
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/utils/__init__.py", line 353, in _safe_indexing
+    return _pandas_indexing(X, indices, indices_dtype, axis=axis)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/sklearn/utils/__init__.py", line 199, in _pandas_indexing
+    return indexer[:, key] if axis else indexer[key]
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 873, in __getitem__
+    return self._getitem_tuple(key)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 1055, in _getitem_tuple
+    return self._getitem_tuple_same_dim(tup)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 750, in _getitem_tuple_same_dim
+    retval = getattr(retval, self.name)._getitem_axis(key, axis=i)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 1099, in _getitem_axis
+    return self._getitem_iterable(key, axis=axis)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 1037, in _getitem_iterable
+    keyarr, indexer = self._get_listlike_indexer(key, axis, raise_missing=False)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 1254, in _get_listlike_indexer
+    self._validate_read_indexer(keyarr, indexer, axis, raise_missing=raise_missing)
+  File "/cluster/home/lucabri/.local/lib/python3.8/site-packages/pandas/core/indexing.py", line 1298, in _validate_read_indexer
+    raise KeyError(f"None of [{key}] are in the [{axis_name}]")
+KeyError: "None of [Index(['age', 'alb', 'alp', 'alt', 'ast', 'be', 'bicar', 'bili', 'bnd', 'bun',\n       'ca', 'cai', 'ck', 'ckmb', 'cl', 'crea', 'crp', 'dbp', 'fgn', 'fio2',\n       'glu', 'height', 'hgb', 'hr', 'k', 'lact', 'lymph', 'map', 'mch',\n       'mchc', 'mcv', 'methb', 'mg', 'na', 'neut', 'o2sat', 'pco2', 'ph',\n       'phos', 'plt', 'po2', 'ptt', 'resp', 'sbp', 'temp', 'tnt', 'urine',\n       'wbc', 'weight'],\n      dtype='object')] are in the [columns]"
 
-real	0m13.583s
-user	0m12.296s
-sys	0m0.571s
+real	0m4.941s
+user	0m3.591s
+sys	0m0.472s

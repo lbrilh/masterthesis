@@ -5,7 +5,7 @@ import numpy as np
 import joblib
 from cvxopt import matrix, solvers
 from sklearn.model_selection import GridSearchCV
-
+import matplotlib.pyplot as plt
 
 def group_predictions(_Xytrain, _Xy_source, grouping_column, hyper_parameters, pipeline, estimators_folder):
     """
@@ -37,6 +37,8 @@ def group_predictions(_Xytrain, _Xy_source, grouping_column, hyper_parameters, p
 
     _Xygrouped=_Xytrain.groupby(by=grouping_column)
 
+    _Xytrain = _Xytrain.groupby(by=grouping_column).apply(lambda x: x.reset_index(drop=True))
+
     for group_name, group_data in _Xygrouped:
         
         # Skip all groups with less than 8 observations
@@ -47,7 +49,7 @@ def group_predictions(_Xytrain, _Xy_source, grouping_column, hyper_parameters, p
 
             search = GridSearchCV(pipeline, param_grid= {'model__' + key : value for key, value in hyper_parameters.items()})
 
-            _ydata_group = group_data['outcome']
+            _ydata_group = group_data['outcome'].values
             search.fit(group_data, _ydata_group)
 
             _ypredict = search.predict(_Xytrain)
@@ -59,14 +61,18 @@ def group_predictions(_Xytrain, _Xy_source, grouping_column, hyper_parameters, p
 
             _models[group_name] = {
                 f'{grouping_column}': group_data[grouping_column].iloc[0],
+                'best_params': search.best_params_,
+                'cv_results': search.cv_results_,
+                'estimated_coeff': search.best_estimator_.named_steps['model'].coef_,
                 'y_predict': _ypredict,
+                'residues': _ydata_group - search.predict(group_data),
                 'model': estimator_file_path  # Store the filename instead of the model object
             }
     
     return _models
 
 
-def weights(_Xytrain, pipeline, parameters_file):
+def weights(_Xytrain, _Xytrain_source, pipeline, parameters_file):
     """
     Calculate the weights of the magging estimator. 
 
@@ -89,15 +95,15 @@ def weights(_Xytrain, pipeline, parameters_file):
     """
 
     # Load the parameter file for the regressor
-    _dfmodels = pd.read_parquet(parameters_file, engine='pyarrow')
+    _dfmodels = pd.read_parquet(parameters_file)
 
     # Extract group predictions and skip groups with no calculated parameters
-    _predictions=_dfmodels.dropna().values 
+    _predictions=_dfmodels[_Xytrain_source].dropna().values 
 
     if len(_predictions)>1: # Avoid predictions on the entire dataset
                 
         # Transform training data using a preprocessor
-        _Xdata = pipeline.named_steps['preprocessing'].fit_transform(_Xytrain)
+        _Xdata = pipeline.named_steps['preprocessing'].fit_transform(_Xytrain) # Maybe gram without preprocessing (missingness indicaator)
 
         # Set-up of the quadratic program to determine magging weights
         r=len(_predictions)
@@ -117,14 +123,14 @@ def weights(_Xytrain, pipeline, parameters_file):
 
         # Solve the quadratic program to obtain magging weights
         solution = solvers.qp(P, q, G, h, A, b)
-        w = np.array(solution['x']).round(decimals=3).flatten() # Magging weights
+        w = np.array(solution['x']).round(decimals=5).flatten() # Magging weights
         print('Magging weights: ', w)
 
         return w
     
     return None
 
-def predict(weights, _Xytest, pipeline, parameters_file):
+def predict(weights, _Xytest, pipeline, parameters_file, train_source):
     """
     Calculate the magging estimator. 
 
@@ -146,7 +152,7 @@ def predict(weights, _Xytest, pipeline, parameters_file):
     """
 
     # Load the parameter file for the regressor
-    _dfmodels = pd.read_parquet(parameters_file, engine='pyarrow')
+    _dfmodels = pd.read_parquet(parameters_file, engine='pyarrow')[train_source]
 
     # Extract group predictions and skip groups with no calculated parameters
     _predictions=_dfmodels.dropna().values
@@ -162,6 +168,8 @@ def predict(weights, _Xytest, pipeline, parameters_file):
         # Load the stored model for group i 
         loaded_model = joblib.load(_predictions[i]['model'])
 
+        ####################################################################################### This does not work (predict)
+
         # Calculate predictions using the loaded model
         y_pred_loaded = loaded_model.predict(_Xtarget)
 
@@ -172,3 +180,10 @@ def predict(weights, _Xytest, pipeline, parameters_file):
     y_pred = np.sum(loaded_model_preds, axis=0)
 
     return y_pred
+
+
+def magging_distance(X_matrix, u, v):
+    Sigma = (X_matrix.T@X_matrix)/X_matrix.shape[0]
+    u_array = np.array(u)
+    v_array = np.array(v)
+    return (u_array -  v_array).T @ Sigma @ (u_array - v_array)

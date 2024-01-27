@@ -5,7 +5,7 @@ from sklearn.impute import MissingIndicator, SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler, FunctionTransformer
 
-from icu_experiments.constants import CATEGORICAL_COLUMNS, NUMERICAL_COLUMNS
+from constants import CATEGORICAL_COLUMNS, NUMERICAL_COLUMNS
 
 FILL_VALUES = {
     "hospital_id": -1,
