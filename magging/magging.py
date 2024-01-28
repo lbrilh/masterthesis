@@ -251,7 +251,7 @@ class Magging(BaseEstimator):
             print('Magging weights: ', self.w)
 
             return self.w
-
+        
     def predict(self, X):
         """
         Calculate the magging estimator for the response variable. 
@@ -278,11 +278,6 @@ class Magging(BaseEstimator):
         self.y_pred = np.dot(np.array(predictions).T, self.w)
 
         return self.y_pred
-
-
-        
-
-
 
 
 
