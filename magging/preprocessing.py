@@ -94,7 +94,7 @@ def make_anchor_preprocessing(anchor_columns=None):
     return column_transformer
 
 
-def make_feature_preprocessing(missing_indicator=True, categorical_indicator=True, lgbm=False):
+def make_feature_preprocessing(grouping_column, outcome, missing_indicator=True, categorical_indicator=True, lgbm=False):
     """Make preprocessing for features."""
     if categorical_indicator: 
         preprocessors = [
@@ -124,6 +124,16 @@ def make_feature_preprocessing(missing_indicator=True, categorical_indicator=Tru
                 ),
                 CATEGORICAL_COLUMNS,
             ),
+            (
+                'outcome', 
+                FunctionTransformer(func=lambda X: X),
+                [outcome]
+            ),
+            (
+                'grouping_column',
+                FunctionTransformer(func=lambda X: X.fillna(value='kA')),
+                [grouping_column]
+            )
         ]
     elif lgbm:
         preprocessors = [

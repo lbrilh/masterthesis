@@ -39,6 +39,7 @@ hyper_params={
 }
 
 Model={
+    'magging': Magging(Lasso, grouping_column, max_iter = 10000),
     'lasso':Lasso(fit_intercept=True, max_iter=10000),
     'lgbm': LGBMRegressor(),
 }
@@ -106,7 +107,7 @@ for i in range(len(parameters)):
     plt.show()
 
 raise ValueError'''
-
+'''
 # Create a list to store the QQ plot for each parameter's residues
 plt.figure(figsize=(10, 5))
 
@@ -188,7 +189,8 @@ for i in range(len(parameters)):
     print(np.array(parameters['eicu'][i]['estimated_coeff']).T @ sigma @ np.array(parameters['eicu'][i]['estimated_coeff']))
 
 
-raise ValueError
+raise ValueError'''
+
 datasets=['eicu','hirid','mimic','miiv']
 
 # Apply age grouping if needed
