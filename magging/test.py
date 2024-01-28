@@ -13,12 +13,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Lasso
 from sklearn.pipeline import Pipeline
 from magging import Magging
-import numpy as np
+from MaggingGroupAnalysis import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe
 import pandas as pd
-import matplotlib.pyplot as plt
-from lightgbm import LGBMRegressor
-from sklearn.metrics import mean_squared_error
-import statsmodels.api as sm
 
 Regressor='magging'
 grouping_column = 'numbedscategory'
@@ -44,7 +40,7 @@ Preprocessor = ColumnTransformer(
 
 pipeline = Pipeline(steps=[
     ('preprocessing', Preprocessor),
-    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 9.5, max_iter = 10000))
+    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 0.001, max_iter = 10000))
 ])
 
 # Load data from global parquet folder 
@@ -65,13 +61,12 @@ _Xydata={
 
 # Specify the dataset you want to create the Tukey-Anscombe plots for
 dataset_to_plot = 'eicu'
-print(_Xydata['eicu']['outcome'])
 Xy = Preprocessor.fit_transform(_Xydata['eicu'])
 pipeline.named_steps['model'].group_fit(Xy, 'outcome__outcome')
 
 X = Xy.drop(columns = ['outcome__outcome', 'grouping_column__numbedscategory'])
 print(pipeline.named_steps['model'].group_predictions(X))
-pipeline.named_steps['model'].weights(X)
 
+pipeline.named_steps['model'].weights(X)
 print(pipeline.named_steps['model'].predict(X))
 print("Script successful")

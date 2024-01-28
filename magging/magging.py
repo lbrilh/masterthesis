@@ -6,7 +6,8 @@ from sklearn.base import BaseEstimator
 from sklearn.linear_model import Lasso, LinearRegression
 
 class Magging(BaseEstimator):
-""" Magging Estimator.
+    """ 
+    Magging Estimator.
 
     The optimization objective for Magging is:
 
@@ -37,11 +38,11 @@ class Magging(BaseEstimator):
     grouping_column : str
         Column used to determine groups in Xy.
 
-    Xy : pandas.DataFrame
-        The input DataFrame containing predictor matrix, response vector, and group column.
-
     groups : numpy.ndarray
         An array containing unique group values derived from the grouping_column.
+    
+    name_response_var : str
+        The name of the response variable.
 
     X : pandas.DataFrame
         The input predictor matrix.
@@ -99,10 +100,6 @@ class Magging(BaseEstimator):
         min_values : int
             The minimal number of observations in a group to fit a model. 
 
-        Returns
-        -------
-        dict
-            A dict containing the models.
         """
 
         if not isinstance(Xy, pd.DataFrame):
@@ -110,10 +107,10 @@ class Magging(BaseEstimator):
         
         if self.grouping_column not in Xy.columns:
             raise ValueError('Column to group X is not a column in X')
-        
-        self.Xy = Xy
 
         self.groups = Xy[self.grouping_column].unique()
+
+        self.name_response_var = name_response_var
       
         Xygrouped = Xy.groupby(by=self.grouping_column)
 
@@ -123,6 +120,7 @@ class Magging(BaseEstimator):
                 _Xgroup = group_data.drop(columns=[self.grouping_column, name_response_var])
                 _ygroup = group_data[[name_response_var]]
                 model.fit(_Xgroup, _ygroup)
+                #self.residues_in_groups[group_name] = np.array(_ygroup.values - model.predict(_Xgroup))
                 self.models[group_name] = model
             else: 
                 self.models[group_name] = None
@@ -154,7 +152,6 @@ class Magging(BaseEstimator):
                 raise ValueError(f'No model fitted for group: {group}')
             else: 
                 if self.models[group]:
-                    print(group)
                     model = self.models[group]
                     model_predictions = model.predict(X)
                     group_predictions.append(model_predictions)
@@ -189,7 +186,7 @@ class Magging(BaseEstimator):
             The magging distance.
         """
 
-        if not X:
+        if X.empty:
             X = self.X
         Sigma = (X.T@X)/X.shape[0]
         u_array = np.array(u)
@@ -215,42 +212,46 @@ class Magging(BaseEstimator):
             The weights of the magging estimator calculated on the predictor matrix.
         """
 
-            # Set-up of the quadratic program to determine magging weights
-            r = self.group_prediction_matrix.shape[1]
-            if r == 1:
-                print('Warning: Only one group exists!')
-            fhat = self.group_prediction_matrix
-            H = fhat.T @ fhat / X.shape[0]
-            print(H.shape)
+        # Set-up of the quadratic program to determine magging weights
+        r = self.group_prediction_matrix.shape[1]
+        if r == 1:
+            print('Warning: Only one group exists!')
+        fhat = self.group_prediction_matrix
+        H = fhat.T @ fhat / X.shape[0]
 
-            if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
-                print("Warning: Matrix H is not positive definite")
-                H += 1e-5
-            P = matrix(H)
-            q = matrix(np.zeros(r))
-            G = matrix(-np.eye(r))
-            h = matrix(np.zeros(r))
-            A = matrix(1.0, (1, r))
-            b = matrix(1.0)
+        print(np.linalg.eigvals(H))
 
-            # Solve the quadratic program to obtain magging weights
-            solution = solvers.qp(P, q, G, h, A, b)
-            self.w = np.array(solution['x']).round(4).flatten() # Magging weights
+        if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
+            print("Warning: Matrix H is not positive definite")
+            H += 1e-5
+        P = matrix(H)
+        q = matrix(np.zeros(r))
+        G = matrix(-np.eye(r))
+        h = matrix(np.zeros(r))
+        A = matrix(1.0, (1, r))
+        b = matrix(1.0)
 
-            if isinstance(self.model, (Lasso, LinearRegression)):
-                coef = []
-                self.groups_magging_dist = {}
-                for group in self.groups:
-                    model_coef = self.models[group].coef_
-                    coef.append(model_coef)
-                    self.groups_magging_dist[group] = self.magging_distance(model_coef)
+        # Solve the quadratic program to obtain magging weights
+        solution = solvers.qp(P, q, G, h, A, b)
+        self.w = np.array(solution['x']).round(4).flatten() # Magging weights
 
-                magging_coef = np.dot(np.matrix(coef).T, self.w).T
-                self.magging_dist = self.magging_distance(magging_coef)
+        if isinstance(self.model, (Lasso, LinearRegression)):
+            coef = []
+            self.groups_magging_dist = {}
+            for group in self.groups:
+                model_coef = self.models[group].coef_
+                coef.append(model_coef)
+                self.groups_magging_dist[group] = self.magging_distance(model_coef)
 
-            print('Magging weights: ', self.w)
+            magging_coef = np.dot(np.matrix(coef).T, self.w).T
+            self.magging_dist = self.magging_distance(magging_coef)
 
-            return self.w
+            print(self.groups_magging_dist)
+            print(self.magging_dist)
+
+        print('Magging weights: ', self.w)
+
+        return self.w
         
     def predict(self, X):
         """
