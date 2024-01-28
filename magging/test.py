@@ -15,6 +15,7 @@ from sklearn.pipeline import Pipeline
 from magging import Magging
 from MaggingGroupAnalysis import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe
 import pandas as pd
+import numpy as np
 
 Regressor='magging'
 grouping_column = 'numbedscategory'
