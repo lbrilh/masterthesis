@@ -1,14 +1,9 @@
-import os 
-import re
 import copy
 import pandas as pd
 import numpy as np
-import joblib
 from cvxopt import matrix, solvers
-from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import Lasso, LinearRegression
-import matplotlib.pyplot as plt
 
 class Magging(BaseEstimator):
 """ Magging Estimator.
