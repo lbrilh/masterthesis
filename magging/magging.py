@@ -141,7 +141,6 @@ class Magging(BaseEstimator):
             A dict containing information about the predictions for each group.
         """
 
-        self.X = X
         if not isinstance(X, pd.DataFrame):
             raise ValueError('X must be a pd.DataFrame')
         if not self.models: 
@@ -183,7 +182,7 @@ class Magging(BaseEstimator):
         """
 
         if not X:
-            X = self.X
+            raise ValueError('No Grammatrix defined')
         Sigma = (X.T@X)/X.shape[0]
         u_array = np.array(u)
         v_array = np.array(v)
