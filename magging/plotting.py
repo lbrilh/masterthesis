@@ -1,7 +1,12 @@
 import seaborn as sns 
 import pandas as pd
+import matplotlib.pyplot as plt
 import os
 
+category = 'age_group'
+y = 'outcome'
+age_group = True
+dataset = 'mimic'
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -19,4 +24,37 @@ _Xydata={
     'miiv': load_data('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
 }
 
-sns.displot(_Xydata['eicu'], x = 'outcome', kde=True)
+if age_group:
+    for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
+        bins = [0, 15, 39, 65, float('inf')]
+        labels = ['child', 'young adults', 'middle age', 'senior']
+
+        # Use pd.cut to create a new 'age_group' column
+        _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+
+else: 
+    _Xydata['mimic'][category].fillna(value='N/A', inplace=True)
+
+print(_Xydata['mimic']['age_group'].isna().sum())
+
+sns.set_theme(font_scale=1.25)
+sns.set_style('ticks')
+sns.despine()
+
+f = sns.catplot(data=_Xydata['mimic'], x=category, hue=category, y=y, kind='box', hue_order=['child', 'young adults', 'middle age', 'senior'],
+                palette='crest', legend=False)
+f.set_xlabels('')
+f.set_titles(f'Density of average hr 48-72h after admission categorized by age in {dataset}', fontdict={'fontweight': 'bold'})
+
+plt.show()
+
+ax = sns.kdeplot(data=_Xydata['mimic'], x='outcome', hue=category, common_norm=False, hue_order=['child', 'young adults', 'middle age', 'senior'],
+            palette='crest', fill=True)
+
+ax.set_xlabel('average hr 48-72h')
+
+ax.set_title(f'Density of average hr 48-72h after admission categorized by age in {dataset}', fontdict={'fontweight': 'bold'})
+
+sns.move_legend(ax, 'upper left', title=None)
+
+plt.show()
