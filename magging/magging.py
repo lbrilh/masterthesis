@@ -163,7 +163,7 @@ class Magging(BaseEstimator):
         return self.group_prediction_matrix
 
 
-    def magging_distance(self, u, X=pd.DataFrame(), v=0):
+    def magging_distance(self, u, X, v=0):
         """
         Calculate the magging distance. 
 
@@ -171,10 +171,6 @@ class Magging(BaseEstimator):
         ----------
         u : numpy.array
             A vector to determine its magging distance. 
-
-        X : pandas.DataFrame, default empty
-            A DataFrame containing the predictor matrix. Default: Calculate the distance based on the 
-            matrix used for predictions in the groups. 
         
         v : numpy.array, default = 0
             An additional vector. Needed if one wants to calculate the distance between to vectors.
@@ -186,7 +182,7 @@ class Magging(BaseEstimator):
             The magging distance.
         """
 
-        if X.empty:
+        if not X:
             X = self.X
         Sigma = (X.T@X)/X.shape[0]
         u_array = np.array(u)
