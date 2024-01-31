@@ -131,7 +131,7 @@ def make_feature_preprocessing(grouping_column, outcome, missing_indicator=True,
             ),
             (
                 'grouping_column',
-                FunctionTransformer(func=lambda X: X.fillna(value='kA')),
+                FunctionTransformer(func=lambda X: X),#.fillna(value='N/A')), #use only when not age_group
                 [grouping_column]
             )
         ]

@@ -171,6 +171,9 @@ class Magging(BaseEstimator):
         u : numpy.array
             A vector to determine its magging distance. 
         
+        X : pandas.DataFrame
+            A DataFrame containing the predictor matrix.
+        
         v : numpy.array, default = 0
             An additional vector. Needed if one wants to calculate the distance between to vectors.
             If no vector is provided, v is the origin. 
@@ -181,12 +184,13 @@ class Magging(BaseEstimator):
             The magging distance.
         """
 
-        if not X:
+        if X.empty:
             raise ValueError('No Grammatrix defined')
+        X = np.matrix(X)
         Sigma = (X.T@X)/X.shape[0]
         u_array = np.array(u)
         v_array = np.array(v)
-        return (u_array -  v_array).T @ Sigma @ (u_array - v_array)
+        return ((u_array -  v_array).T @ Sigma @ (u_array - v_array))
     
     def weights(self, X):
         """
@@ -236,13 +240,14 @@ class Magging(BaseEstimator):
             for group in self.groups:
                 model_coef = self.models[group].coef_
                 coef.append(model_coef)
-                self.groups_magging_dist[group] = self.magging_distance(model_coef)
+                self.groups_magging_dist[group] = self.magging_distance(model_coef, X)
 
             magging_coef = np.dot(np.matrix(coef).T, self.w).T
-            self.magging_dist = self.magging_distance(magging_coef)
-
-            print(self.groups_magging_dist)
+            self.magging_dist = self.magging_distance(magging_coef, X)
             print(self.magging_dist)
+
+            print('Magging distance of groups: ', self.groups_magging_dist)
+            print('Magging distance of magging estimator: ', self.magging_dist)
 
         print('Magging weights: ', self.w)
 
@@ -264,7 +269,6 @@ class Magging(BaseEstimator):
         """
         
         predictions = []
-        number_of_groups = self.group_prediction_matrix.shape[1]
 
         for group in self.groups:
             model = self.models[group]

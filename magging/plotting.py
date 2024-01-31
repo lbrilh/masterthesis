@@ -6,7 +6,7 @@ import os
 category = 'age_group'
 y = 'outcome'
 age_group = True
-dataset = 'mimic'
+dataset = 'hirid'
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -33,16 +33,16 @@ if age_group:
         _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
 
 else: 
-    _Xydata['mimic'][category].fillna(value='N/A', inplace=True)
+    _Xydata[dataset][category].fillna(value='N/A', inplace=True)
 
-print(_Xydata['mimic']['age_group'].isna().sum())
+print(_Xydata[dataset]['age_group'].isna().sum())
 
 
 fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10,5))
 
 plt.subplot(1,2,1)
 plt.xticks([0, 50, 100, 150])
-f = sns.boxplot(data=_Xydata['mimic'], x=y, hue=category, y=category, hue_order=['child', 'young adults', 'middle age', 'senior'],
+f = sns.boxplot(data=_Xydata[dataset], x=y, hue=category, y=category, hue_order=['child', 'young adults', 'middle age', 'senior'],
                 palette='crest', legend=False, fill=True, linewidth=1, boxprops=dict(alpha=0.6))
 f.set_xlabel('',)
 f.set_ylabel('',)
@@ -50,7 +50,7 @@ sns.set_style('ticks')
 plt.subplot(1,2,2)
 #fig.add_subplot(1,2,2, frameon=False)
 
-ax = sns.kdeplot(data=_Xydata['mimic'], x='outcome', hue=category, common_norm=False, hue_order=['child', 'young adults', 'middle age', 'senior'],
+ax = sns.kdeplot(data=_Xydata[dataset], x='outcome', hue=category, common_norm=False, hue_order=['child', 'young adults', 'middle age', 'senior'],
             palette='crest', fill=True, linewidth=0, alpha=0.5, legend=False)
 
 ax.set_xlabel('')

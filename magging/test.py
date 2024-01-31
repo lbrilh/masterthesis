@@ -13,12 +13,12 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Lasso
 from sklearn.pipeline import Pipeline
 from magging import Magging
-from MaggingGroupAnalysis import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe
+from Diagnostics import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe
 import pandas as pd
 import numpy as np
 
 Regressor='magging'
-grouping_column = 'numbedscategory'
+grouping_column = 'age_group'
 age_group = True
 
 
@@ -35,15 +35,6 @@ hyper_params={
         'n_estimators': [100, 200, 300]}
 }
 
-Preprocessor = ColumnTransformer(
-    transformers=make_feature_preprocessing(grouping_column, 'outcome', missing_indicator=False, categorical_indicator=True, lgbm=False)
-    ).set_output(transform="pandas")
-
-pipeline = Pipeline(steps=[
-    ('preprocessing', Preprocessor),
-    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 0.001, max_iter = 10000))
-])
-
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
     current_directory = os.path.dirname(os.path.abspath(__file__))  
@@ -51,6 +42,7 @@ def load_data(outcome, source, version='train'):
     file_path = os.path.abspath(os.path.join(current_directory, relative_path))
     _data = pd.read_parquet(file_path, engine='pyarrow')
     return _data 
+
 
 # Include only admissions with recorded sex
 _Xydata={
@@ -60,14 +52,39 @@ _Xydata={
     'miiv': load_data('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
 }
 
+# Apply age grouping if needed
+if age_group:
+    for dataset in ['mimic', 'eicu', 'miiv', 'hirid']:
+        bins = [0, 15, 39, 65, float('inf')]
+        labels = ['child', 'young adults', 'middle age', 'senior']
+
+        # Use pd.cut to create a new 'age_group' column
+        _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+        _Xydata[dataset]['age_group'].dropna(inplace=True)
+        print(_Xydata[dataset]['age_group'].isna().sum())
+
+
+Preprocessor = ColumnTransformer(
+    transformers=make_feature_preprocessing(grouping_column, 'outcome', missing_indicator=False, categorical_indicator=True, lgbm=False)
+    ).set_output(transform="pandas")
+
+pipeline = Pipeline(steps=[
+    ('preprocessing', Preprocessor),
+    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 2., max_iter = 10000))
+])
+
+print(_Xydata['hirid'].groupby(by=['age_group'])['source'].count())
 # Specify the dataset you want to create the Tukey-Anscombe plots for
-dataset_to_plot = 'eicu'
-Xy = Preprocessor.fit_transform(_Xydata['eicu'])
+dataset_to_plot = 'hirid'
+Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
 pipeline.named_steps['model'].group_fit(Xy, 'outcome__outcome')
 
-X = Xy.drop(columns = ['outcome__outcome', 'grouping_column__numbedscategory'])
-print(pipeline.named_steps['model'].group_predictions(X))
+X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])
+pipeline.named_steps['model'].group_predictions(X)
 
 pipeline.named_steps['model'].weights(X)
-print(pipeline.named_steps['model'].predict(X))
+pipeline.named_steps['model'].predict(X)
+
+QQPlot(pipeline.named_steps['model'], Xy)
+TukeyAnscombe(pipeline.named_steps['model'], Xy)
 print("Script successful")
