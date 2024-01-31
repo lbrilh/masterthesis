@@ -37,27 +37,32 @@ else:
 
 print(_Xydata['mimic']['age_group'].isna().sum())
 
+
+fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10,5))
+
 plt.subplot(1,2,1)
-sns.set_theme(font_scale=1.25)
+plt.xticks([0, 50, 100, 150])
+f = sns.boxplot(data=_Xydata['mimic'], x=y, hue=category, y=category, hue_order=['child', 'young adults', 'middle age', 'senior'],
+                palette='crest', legend=False, fill=True, linewidth=1, boxprops=dict(alpha=0.6))
+f.set_xlabel('',)
+f.set_ylabel('',)
 sns.set_style('ticks')
-sns.despine()
-
-f = sns.catplot(data=_Xydata['mimic'], x=category, hue=category, y=y, kind='box', hue_order=['child', 'young adults', 'middle age', 'senior'],
-                palette='crest', legend=False)
-f.set_xlabels('')
-f.set_titles(f'Average hr 48-72h after admission categorized by age in {dataset}', fontdict={'fontweight': 'bold'})
-
 plt.subplot(1,2,2)
+#fig.add_subplot(1,2,2, frameon=False)
 
 ax = sns.kdeplot(data=_Xydata['mimic'], x='outcome', hue=category, common_norm=False, hue_order=['child', 'young adults', 'middle age', 'senior'],
-            palette='crest', fill=True)
+            palette='crest', fill=True, linewidth=0, alpha=0.5, legend=False)
 
-ax.set_xlabel('average hr 48-72h')
+ax.set_xlabel('')
+ax.set_ylabel('')
+
 sns.set_style('ticks')
 sns.despine()
 #ax.set_title(f'Density of average hr 48-72h after admission categorized by age in {dataset}', fontdict={'fontweight': 'bold'})
 
-sns.move_legend(ax, 'upper left', title=None)
-plt.suptitle(f'Average hr 48-72h after admission categorized by age in {dataset}', fontweight= 'bold')
-
+#sns.move_legend(ax, 'upper left', title=None)
+plt.suptitle(f'Average hr 48-72h after admission categorized by age in {dataset}', fontweight= 'bold', fontsize=15)
+fig.supxlabel('average hr 48-72h')
+plt.setp(ax.spines.values(),linewidth=1)
+plt.setp(f.spines.values(),linewidth=1)
 plt.show()
