@@ -1,3 +1,11 @@
+'''This file creates a figure containing a boxplot and a kernel-density estimator plot for 
+the average hr 48-72h after admission categorized by age group. 
+
+ToDo: Generalize this and allow different cateogries. 
+'''
+
+
+
 import seaborn as sns 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,7 +16,7 @@ y = 'outcome'
 age_group = True
 dataset = 'hirid'
 
-# Load data from global parquet folder 
+# Load data from parent parquet folder 
 def load_data(outcome, source, version='train'):
     current_directory = os.path.dirname(os.path.abspath(__file__))  
     relative_path = os.path.join('..', 'Parquet', f'{outcome}_data_{source}_{version}.parquet')
@@ -16,7 +24,7 @@ def load_data(outcome, source, version='train'):
     _data = pd.read_parquet(file_path, engine='pyarrow')
     return _data 
 
-# Include only admissions with recorded sex
+# Load data and include only admissions with recorded sex
 _Xydata={
     'eicu': load_data('hr','eicu')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
     'hirid': load_data('hr','hirid')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
@@ -25,15 +33,15 @@ _Xydata={
 }
 
 if age_group:
+    # Add category age_group to datasets
     for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
         bins = [0, 15, 39, 65, float('inf')]
         labels = ['child', 'young adults', 'middle age', 'senior']
-
-        # Use pd.cut to create a new 'age_group' column
         _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
-
-else: 
+else:
+    # Fill missing values in category column
     _Xydata[dataset][category].fillna(value='N/A', inplace=True)
+
 
 print(_Xydata[dataset]['age_group'].isna().sum())
 
