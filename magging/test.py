@@ -1,3 +1,10 @@
+''' Test the functionality of the magging object
+ToDo: Find optinmal CV score (add as metric magging distance to groups). Implement quantileTransformer. 
+    How to use quantile Transformer plots in more than 2 dimensions? What is plot_output? 
+    What is PolynomialFeature? OneHotEncoder. Use different metrics / check metrics.
+'''
+
+
 import sys
 import os
 
@@ -16,6 +23,7 @@ from magging import Magging
 from Diagnostics import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe, CorrelationPlot
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 Regressor='magging'
 grouping_column = 'age_group'
@@ -77,6 +85,7 @@ print(_Xydata['hirid'].groupby(by=['age_group'])['source'].count())
 # Specify the dataset you want to create the Tukey-Anscombe plots for
 dataset_to_plot = 'hirid'
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
+
 pipeline.named_steps['model'].group_fit(Xy, 'outcome__outcome')
 
 X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])

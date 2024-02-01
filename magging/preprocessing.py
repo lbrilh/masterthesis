@@ -3,7 +3,7 @@ import warnings
 import pandas as pd
 from sklearn.impute import MissingIndicator, SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler, FunctionTransformer
+from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder, StandardScaler, FunctionTransformer, QuantileTransformer
 
 from constants import CATEGORICAL_COLUMNS, NUMERICAL_COLUMNS
 
@@ -166,7 +166,7 @@ def make_feature_preprocessing(grouping_column, outcome, missing_indicator=True,
                 Pipeline(
                     steps=[
                         ("impute", SimpleImputer(strategy="mean")),
-                        ("scale", StandardScaler()),
+                        ("scale", QuantileTransformer()),
                     ]
                 ),
                 NUMERICAL_COLUMNS,
