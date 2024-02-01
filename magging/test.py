@@ -13,7 +13,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Lasso
 from sklearn.pipeline import Pipeline
 from magging import Magging
-from Diagnostics import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe
+from Diagnostics import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe, CorrelationPlot
 import pandas as pd
 import numpy as np
 
@@ -83,8 +83,10 @@ X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'
 pipeline.named_steps['model'].group_predictions(X)
 
 pipeline.named_steps['model'].weights(X)
-pipeline.named_steps['model'].predict(X)
+yhat = pipeline.named_steps['model'].predict(X)
 
-QQPlot(pipeline.named_steps['model'], Xy)
-TukeyAnscombe(pipeline.named_steps['model'], Xy)
+CorrelationPlot(yhat, Xy['outcome__outcome'])
+
+#QQPlot(pipeline.named_steps['model'], Xy)
+#TukeyAnscombe(pipeline.named_steps['model'], Xy)
 print("Script successful")

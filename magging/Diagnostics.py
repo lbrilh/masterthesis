@@ -134,3 +134,12 @@ def TukeyAnscombe(model, Xy):
     fig.suptitle("Tukey-Anscombe Plot for Group", fontweight='bold', fontsize=15)
     plt.tight_layout()
     plt.show()
+
+def CorrelationPlot(yhat, y):
+    plt.scatter(yhat, y)
+    plt.title('Correlation of estimated and true y', fontweight='bold', fontsize=15)
+    plt.xlabel('Predictions')
+    plt.ylabel('y')
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.show()
