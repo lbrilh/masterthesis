@@ -50,7 +50,7 @@ for dataset in ['eicu', 'hirid', 'mimic', 'miiv']:
     len_dataset = _Xydata[dataset][category].shape[0]
     labels = _Xydata[dataset][category].value_counts().sort_index()
     fig, ax = plt.subplots()
-    print(sns.color_palette('crest'))
+    #print(sns.color_palette('crest'))
     if dataset == 'eicu': 
         colors = [(0.48942421, 0.72854938, 0.56751036), (0.24929311, 0.56486397, 0.5586654), (0.11131735, 0.39155635, 0.53422678), (0.14573579, 0.29354139, 0.49847009)]
     elif dataset in ['hirid', 'miiv']: 
