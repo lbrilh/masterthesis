@@ -1,7 +1,8 @@
 '''This file creates a figure containing a boxplot and a kernel-density estimator plot for 
 the average hr 48-72h after admission categorized by age group. 
 
-ToDo: Generalize this and allow different cateogries. 
+ToDo:   1. Drop categories with 0 entries.  
+        2. Add number of observations in plots    
 '''
 
 
@@ -10,8 +11,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10,5))
-dataset = 'hirid'
 category = 'age_group'
 y = 'outcome'
 
@@ -41,37 +40,39 @@ if age_group:
     bins = [0, 15, 39, 65, float('inf')]
     labels = ['child', 'young adults', 'middle age', 'senior']
     for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
-        print(_Xydata[dataset]['age'])
         _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
 else:
     # Fill missing values in category column
-    _Xydata[dataset][category].fillna(value='N/A', inplace=True)
+    for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
+        _Xydata[dataset][category].fillna(value='N/A', inplace=True)
 
 
-df_categories = _Xydata[dataset][category].cat.categories # ordered categories from DataFrame
+for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
+    fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10,5))
+    df_categories = _Xydata[dataset][category].cat.categories # ordered categories from DataFrame
+    print(_Xydata[dataset][category].value_counts())
 
+    # Boxplot
+    plt.subplot(1,2,1)
+    plt.xticks([0, 50, 100, 150])
+    f = sns.boxplot(data=_Xydata[dataset], x=y, hue=category, y=category, hue_order=df_categories,
+                    palette='crest', legend=False, fill=True, linewidth=1, boxprops=dict(alpha=0.6))
+    f.set_xlabel('')
+    f.set_ylabel('')
+    sns.set_style('ticks')
+    plt.subplot(1,2,2)
 
-# Boxplot
-plt.subplot(1,2,1)
-plt.xticks([0, 50, 100, 150])
-f = sns.boxplot(data=_Xydata[dataset], x=y, hue=category, y=category, hue_order=df_categories,
-                palette='crest', legend=False, fill=True, linewidth=1, boxprops=dict(alpha=0.6))
-f.set_xlabel('',)
-f.set_ylabel('',)
-sns.set_style('ticks')
-plt.subplot(1,2,2)
+    # KDE Plot
+    ax = sns.kdeplot(data=_Xydata[dataset], x='outcome', hue=category, common_norm=False, hue_order=df_categories,
+                palette='crest', fill=True, linewidth=0, alpha=0.5, legend=False)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    sns.set_style('ticks')
+    sns.despine()
 
-# KDE Plot
-ax = sns.kdeplot(data=_Xydata[dataset], x='outcome', hue=category, common_norm=False, hue_order=df_categories,
-            palette='crest', fill=True, linewidth=0, alpha=0.5, legend=False)
-ax.set_xlabel('')
-ax.set_ylabel('')
-sns.set_style('ticks')
-sns.despine()
-
-# Figure
-plt.suptitle(f'Average hr 48-72h after admission categorized by age in {dataset}', fontweight= 'bold', fontsize=15)
-fig.supxlabel('average hr 48-72h')
-plt.setp(ax.spines.values(),linewidth=1)
-plt.setp(f.spines.values(),linewidth=1)
+    # Figure
+    plt.suptitle(f'Average hr 48-72h after admission categorized by age in {dataset}', fontweight= 'bold', fontsize=15)
+    fig.supxlabel('average hr 48-72h')
+    plt.setp(ax.spines.values(),linewidth=1)
+    plt.setp(f.spines.values(),linewidth=1)
 plt.show()
