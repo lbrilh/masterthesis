@@ -1,3 +1,6 @@
+""" This file contains the implementation of the magging estimator.
+"""
+
 import copy
 import pandas as pd
 import numpy as np
