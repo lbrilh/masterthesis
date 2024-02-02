@@ -1,7 +1,9 @@
 ''' Test the functionality of the magging object
 ToDo: Find optinmal CV score (add as metric magging distance to groups). Implement quantileTransformer. 
     How to use quantile Transformer plots in more than 2 dimensions? What is plot_output? 
-    What is PolynomialFeature? OneHotEncoder. Use different metrics / check metrics.
+    What is PolynomialFeature? OneHotEncoder. Use different metrics / check metrics. (max. explained var).
+    Plot Metrics.
+    Look at meta estimators. 
 '''
 
 
