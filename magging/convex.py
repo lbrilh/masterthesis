@@ -1,9 +1,11 @@
+''' Display the convex hull of magging estimators.
+'''
 import numpy as np
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 
 # Define your points
-points = np.array([[0.0, 13.55973753],
+points = np.array([[-0.75809301, 0.92764037],
                    [-2.4220879, 13.83846328],
                    [0.26937025, 13.0436701],
                    [0.54201526, 13.61477594]])

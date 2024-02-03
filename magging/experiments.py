@@ -11,6 +11,7 @@ from preprocessing import make_feature_preprocessing
 from constants import NUMERICAL_COLUMNS
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Lasso
+from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 import magging
 import numpy as np
@@ -21,7 +22,7 @@ from sklearn.metrics import mean_squared_error
 import statsmodels.api as sm
 
 Regressor='lasso'
-grouping_column = 'numbedscategory'
+grouping_column = 'age_group'
 age_group = True
 
 
@@ -29,29 +30,12 @@ parameters_file = os.path.join(current_script_dir, 'Parquet', Regressor, groupin
 estimators_folder = os.path.join(current_script_dir, 'estimators', Regressor, grouping_column)
 parquet_folder = os.path.join(current_script_dir, 'Parquet', Regressor, grouping_column)
 
-hyper_params={
-    'lasso':{"alpha": [9.7, 10]},
-    'lgbm': {
-        'boosting_type': ['gbdt'],
-        'num_leaves': [20, 30, 40],
-        'learning_rate': [0.01, 0.1, 0.2],
-        'n_estimators': [100, 200, 300]}
-}
-
-Model={
-    'magging': Magging(Lasso, grouping_column, max_iter = 10000),
-    'lasso':Lasso(fit_intercept=True, max_iter=10000),
-    'lgbm': LGBMRegressor(),
-}
+alpha_grid = np.linspace(start=0, stop=10, num=50)
 
 Preprocessor = ColumnTransformer(
-    transformers=make_feature_preprocessing(missing_indicator=False, categorical_indicator=False, lgbm=False)
+    transformers=make_feature_preprocessing(grouping_column, 'outcome', missing_indicator=False, categorical_indicator=True, lgbm=False)
     ).set_output(transform="pandas")
 
-pipeline = Pipeline(steps=[
-    ('preprocessing', Preprocessor),
-    ('model', Model[Regressor])
-])
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -73,12 +57,37 @@ datasets=['eicu','hirid','mimic','miiv']
 
 # Apply age grouping if needed
 if age_group:
-    for dataset in datasets:
+    for dataset in ['mimic', 'eicu', 'miiv', 'hirid']:
         bins = [0, 15, 39, 65, float('inf')]
         labels = ['child', 'young adults', 'middle age', 'senior']
 
         # Use pd.cut to create a new 'age_group' column
         _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
+        _Xydata[dataset]['age_group'].dropna(inplace=True)
+
+_Xydata['mimic'][grouping_column] = _Xydata['mimic'][grouping_column].cat.remove_unused_categories()
+
+mse_results = {f'mse score in {group}': {} for group in _Xydata['mimic'][grouping_column].cat.categories}
+Xy = Preprocessor.fit_transform(_Xydata['mimic'])
+print(Xy.columns)
+
+for group in _Xydata['mimic'][grouping_column].cat.categories:
+    print(group)
+    Xy = Xy[Xy[f'grouping_column__{grouping_column}']==group]
+    X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])
+
+    for alpha in alpha_grid:
+        Lasso(fit_intercept=True, max_iter=10000, alpha=alpha)
+        Lasso.fit(X, Xy[['outcome__outcome']])
+        ypred = Lasso.predict(X)
+    mse_results[f'mse score in {group}'] = mean_squared_error(Xy['outcome'],ypred)
+
+print(pd.DataFrame(mse_results))
+
+raise ValueError
+
+
+
 
 if os.path.exists(parameters_file):
     loaded_data = pd.read_parquet(parameters_file, engine='pyarrow')

@@ -1,51 +1,22 @@
-''' Test the functionality of the magging object
-ToDo: Find optinmal CV score (add as metric magging distance to groups). 
-    What is plot_output? 
-    What is PolynomialFeature? Use different metrics / check metrics. (max. explained var).
-    Plot Metrics.
-Use different alpha for different groups (alpha from comp. stat)
-Weird: Alpha big enough --> children magging distance suddenly 0 
-Only after scaling the shortest distance to convex hull?
+''' Calculate the group estimators based on the alphas found in optimal_penalty.py
 '''
-
-
-import sys
 import os
-
-current_script_dir = os.path.dirname(os.path.abspath(__file__))
-
-root_dir = os.path.abspath(os.path.join(current_script_dir, '..', '..'))
-
-sys.path.append(root_dir)
-
-from preprocessing import make_feature_preprocessing
-from constants import NUMERICAL_COLUMNS
-from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import Lasso
-from sklearn.pipeline import Pipeline
-from magging import Magging
-from Diagnostics import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe, CorrelationPlot
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+from Diagnostics import SqrtAbsStandardizedResid, CookDistance, QQPlot, TukeyAnscombe, CorrelationPlot
+from magging import Magging
+from cvxopt import matrix, solvers
+from preprocessing import make_feature_preprocessing
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import Lasso
+from sklearn.metrics import mean_squared_error
+from sklearn.pipeline import Pipeline
 
 Regressor='magging'
 grouping_column = 'age_group'
 age_group = True
-
-
-parameters_file = os.path.join(current_script_dir, 'Parquet', Regressor, grouping_column, 'parameters.parquet')
-estimators_folder = os.path.join(current_script_dir, 'estimators', Regressor, grouping_column)
-parquet_folder = os.path.join(current_script_dir, 'Parquet', Regressor, grouping_column)
-
-hyper_params={
-    'lasso':{"alpha": [9.7, 10]},
-    'lgbm': {
-        'boosting_type': ['gbdt'],
-        'num_leaves': [20, 30, 40],
-        'learning_rate': [0.01, 0.1, 0.2],
-        'n_estimators': [100, 200, 300]}
-}
+dataset_to_plot = 'mimic'
+optimal_alphas = {'child': 2.83, 'young adults': 7, 'middle age': 6.4, 'senior': 5.15}
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -81,25 +52,54 @@ Preprocessor = ColumnTransformer(
     ).set_output(transform="pandas")
 
 pipeline = Pipeline(steps=[
-    ('preprocessing', Preprocessor),
-    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 1.2, max_iter = 10000))
-])
+        ('preprocessing', Preprocessor),
+        ('model', Magging(Lasso, f'grouping_column__{grouping_column}', max_iter = 10000))
+        ])
 
-# Specify the dataset you want to create the Tukey-Anscombe plots for
-dataset_to_plot = 'mimic'
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
-
-'''for column in Xy.columns:
-    plt.subplots()
-    plt.hist(Xy[column])
-    plt.title(f'Histogram for feature {column}')
-
-plt.show()
-raise ValueError'''
-pipeline.named_steps['model'].group_fit(Xy, 'outcome__outcome')
-
 X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])
+
+group_predictions = []
+for group in ['child', 'young adults', 'middle age', 'senior']:
+    model = Lasso(max_iter=10000, alpha=optimal_alphas[group])
+    _Xygroup = Xy[Xy[f'grouping_column__{grouping_column}'] == group]
+    _Xgroup = _Xygroup.drop(columns=[f'grouping_column__{grouping_column}', 'outcome__outcome'])   
+    _ygroup = np.array(_Xygroup[['outcome__outcome']]).reshape(-1)
+    model.fit(_Xgroup, _ygroup)
+    print(model.coef_)
+    Sigma = (np.matrix(X).T@np.matrix(X))/np.matrix(X).shape[0]
+    u_array = np.array(model.coef_)
+    print(f'Magging distance for group {group}: ', ((u_array).T @ Sigma @ (u_array)))
+    group_predictions.append(model.predict(X))
+
+group_prediction_matrix = np.matrix(group_predictions).T
+r = group_prediction_matrix.shape[1]
+if r == 1:
+    print('Warning: Only one group exists!')
+fhat = group_prediction_matrix
+H = fhat.T @ fhat / X.shape[0]
+
+print(np.linalg.eigvals(H))
+
+if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
+    print("Warning: Matrix H is not positive definite")
+    H += 1e-5
+P = matrix(H)
+q = matrix(np.zeros(r))
+G = matrix(-np.eye(r))
+h = matrix(np.zeros(r))
+A = matrix(1.0, (1, r))
+b = matrix(1.0)
+
+# Solve the quadratic program to obtain magging weights
+solution = solvers.qp(P, q, G, h, A, b)
+w = np.array(solution['x']).round(4).flatten() # Magging weights
+print(w)
+
+
+raise ValueError
 pipeline.named_steps['model'].group_predictions(X)
+
 for group in pipeline.named_steps['model'].groups:
     print(group, pipeline.named_steps['model'].models[group].coef_)
 
