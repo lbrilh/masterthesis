@@ -1,9 +1,11 @@
 ''' Test the functionality of the magging object
-ToDo: Find optinmal CV score (add as metric magging distance to groups). Implement quantileTransformer. 
-    How to use quantile Transformer plots in more than 2 dimensions? What is plot_output? 
-    What is PolynomialFeature? OneHotEncoder. Use different metrics / check metrics. (max. explained var).
+ToDo: Find optinmal CV score (add as metric magging distance to groups). 
+    What is plot_output? 
+    What is PolynomialFeature? Use different metrics / check metrics. (max. explained var).
     Plot Metrics.
-    Look at meta estimators. 
+Use different alpha for different groups (alpha from comp. stat)
+Weird: Alpha big enough --> children magging distance suddenly 0 
+Only after scaling the shortest distance to convex hull?
 '''
 
 
@@ -80,24 +82,33 @@ Preprocessor = ColumnTransformer(
 
 pipeline = Pipeline(steps=[
     ('preprocessing', Preprocessor),
-    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 2., max_iter = 10000))
+    ('model', Magging(Lasso, f'grouping_column__{grouping_column}', alpha = 1.2, max_iter = 10000))
 ])
 
-print(_Xydata['hirid'].groupby(by=['age_group'])['source'].count())
 # Specify the dataset you want to create the Tukey-Anscombe plots for
-dataset_to_plot = 'hirid'
+dataset_to_plot = 'mimic'
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
 
+'''for column in Xy.columns:
+    plt.subplots()
+    plt.hist(Xy[column])
+    plt.title(f'Histogram for feature {column}')
+
+plt.show()
+raise ValueError'''
 pipeline.named_steps['model'].group_fit(Xy, 'outcome__outcome')
 
 X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])
 pipeline.named_steps['model'].group_predictions(X)
+for group in pipeline.named_steps['model'].groups:
+    print(group, pipeline.named_steps['model'].models[group].coef_)
 
+raise ValueError
 pipeline.named_steps['model'].weights(X)
 yhat = pipeline.named_steps['model'].predict(X)
 
 CorrelationPlot(yhat, Xy['outcome__outcome'])
 
-#QQPlot(pipeline.named_steps['model'], Xy)
-#TukeyAnscombe(pipeline.named_steps['model'], Xy)
+QQPlot(pipeline.named_steps['model'], Xy)
+TukeyAnscombe(pipeline.named_steps['model'], Xy)
 print("Script successful")

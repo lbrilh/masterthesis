@@ -160,13 +160,13 @@ def make_feature_preprocessing(grouping_column, outcome, missing_indicator=True,
             ),
         ]
     else:
-        preprocessors = [
+        preprocessors = [   
             (
                 "numeric",
                 Pipeline(
                     steps=[
                         ("impute", SimpleImputer(strategy="mean")),
-                        ("scale", QuantileTransformer()),
+                        ("scale", StandardScaler()),
                     ]
                 ),
                 NUMERICAL_COLUMNS,

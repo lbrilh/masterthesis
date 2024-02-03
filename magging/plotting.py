@@ -1,5 +1,6 @@
 '''This file creates a figure containing a boxplot and a kernel-density estimator plot for 
-the average hr 48-72h after admission categorized by age group. 
+the average hr 48-72h after admission categorized by age group. Additionally, it creates
+a population plot. 
 '''
 
 

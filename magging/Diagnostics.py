@@ -136,7 +136,7 @@ def TukeyAnscombe(model, Xy):
     plt.show()
 
 def CorrelationPlot(yhat, y):
-    plt.scatter(yhat, y)
+    plt.scatter(yhat, y, alpha=0.2)
     plt.title('Correlation of estimated and true y', fontweight='bold', fontsize=15)
     plt.xlabel('Predictions')
     plt.ylabel('y')
