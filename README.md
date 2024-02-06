@@ -5,8 +5,11 @@
 
 
 * Create
-* coded and evaluated statistical methods:
+* Evaluated statistical methods:
   * Anchor Regression
-* scikit-learn compatible implementation
-*  
+  * LGBM Refit (coded scikit-learn compatible version for all boosting types)
+  * Magging (not scikit-learn compatible)
+  * Data Shared Lasso (scikit-learn compatible)
 
+
+  ToBeContinued
