@@ -40,12 +40,6 @@ Regressor='magging'
 grouping_column = 'age_group'
 age_group = True
 
-# From the plots, we choose
-# alpha children = 2.73
-# alpha young adults = 7
-# alpha middle age = 6.4
-# alpha senior = 5.15
-
 parameters_file = os.path.join(current_script_dir, 'Parquet', Regressor, grouping_column, 'parameters.parquet')
 estimators_folder = os.path.join(current_script_dir, 'estimators', Regressor, grouping_column)
 parquet_folder = os.path.join(current_script_dir, 'Parquet', Regressor, grouping_column)

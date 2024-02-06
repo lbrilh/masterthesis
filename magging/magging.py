@@ -156,9 +156,10 @@ class Magging(BaseEstimator):
                 if self.models[group]:
                     model = self.models[group]
                     model_predictions = model.predict(X)
-                    group_predictions.append(model_predictions)
+                    group_predictions.append(model_predictions.reshape(-1))
                 else: 
                     print(f'Group {group} has not been fitted and thus is skipped for predictions')
+        print(group_predictions)
         self.group_prediction_matrix = np.matrix(group_predictions).T
         if self.group_prediction_matrix.shape == (0,0):
             print('Warning: No groups have been used for predictions')

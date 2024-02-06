@@ -19,7 +19,7 @@ Regressor='magging'
 grouping_column = 'age_group'
 age_group = True
 dataset_to_plot = 'mimic'
-optimal_alphas = {'child': 0.1, 'young adults': 0.1 , 'middle age': 0.1, 'senior': 0.1}
+optimal_alphas = {'child': 1.72, 'young adults': 2.73 , 'middle age': 2.32, 'senior': 1.92}
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -112,7 +112,7 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.title(group)
 fig.suptitle("Tukey-Anscombe Plot for Groups", fontweight='bold', fontsize=15)
 plt.tight_layout()
-plt.show()
+#plt.show()
 
 # QQ Plot
 nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
@@ -129,7 +129,7 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.title(group)
 plt.suptitle(f'QQ Plot', fontweight='bold', fontsize=15)
 plt.tight_layout()
-plt.show()
+#plt.show()
 
 # Correlation plot
 for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
@@ -140,8 +140,7 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.ylabel('y')
     plt.gca().spines['top'].set_visible(False)
     plt.gca().spines['right'].set_visible(False)
-    plt.show()
-raise ValueError
+#    plt.show()
 
 group_prediction_matrix = np.matrix(group_predictions).T
 r = group_prediction_matrix.shape[1]
