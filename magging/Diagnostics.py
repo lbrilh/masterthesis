@@ -1,8 +1,3 @@
-import statsmodels.api as sm
-import numpy as np
-import matplotlib.pyplot as plt
-from magging import Magging
-
 """
 This script provides diagnostic plots and functions for analyzing Magging models:
 
@@ -15,6 +10,12 @@ This script provides diagnostic plots and functions for analyzing Magging models
 
 4. TukeyAnscombe: Creates Tukey-Anscombe plots for analyzing residuals.
 """
+
+import statsmodels.api as sm
+import numpy as np
+import matplotlib.pyplot as plt
+from magging import Magging
+
 def SqrtAbsStandardizedResid(model, Xy):
     if not isinstance(model, Magging):
         raise ValueError('The provided model is not a magging model')
