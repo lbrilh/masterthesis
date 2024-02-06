@@ -3,9 +3,10 @@ ToDo: Find optinmal CV score (add as metric magging distance to groups).
     What is plot_output? 
     What is PolynomialFeature? Use different metrics / check metrics. (max. explained var).
     Convex.py 
-    plot fio02 histogram for children
+    plot fio02 histogram for children --> Violates normal assumption
     connection alpha lasso, dsl (it reduces pdim problem to 1dim problem)
     make empirical magging nice
+    MSE on unseen datasets?
     plot diagnostics for groups with optimal alphas
     Can I apply the 1 se rule to get optimal alpha automatically?
 Use different alpha for different groups (alpha from comp. stat)
@@ -33,6 +34,7 @@ from magging import Magging
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 Regressor='magging'
 grouping_column = 'age_group'
@@ -75,7 +77,8 @@ if age_group:
         _Xydata[dataset]['age_group'] = pd.cut(_Xydata[dataset]['age'], bins=bins, labels=labels, right=False)
         _Xydata[dataset]['age_group'].dropna(inplace=True)
         print(_Xydata[dataset]['age_group'].isna().sum())
-
+    for dataset in ['mimic', 'eicu', 'miiv', 'hirid']: 
+        _Xydata[dataset]['age_group'] = _Xydata[dataset]['age_group'].cat.remove_unused_categories()
 
 Preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(grouping_column, 'outcome', missing_indicator=False, categorical_indicator=True, lgbm=False)
@@ -86,10 +89,13 @@ Preprocessor = ColumnTransformer(
 dataset_to_plot = 'mimic'
 
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
-
+'''print(Xy.columns)
+sns.kdeplot(Xy['numeric__fio2'])
+plt.show()
+raise ValueError
+'''
 # dict to store the results
-results = {'child': {'alpha': [], 'l1_norm': [], 'mse': []}, 'young adults': {'alpha': [], 'l1_norm': [], 'mse': []},
-               'middle age': {'alpha': [], 'l1_norm': [], 'mse': []}, 'senior': {'alpha': [], 'l1_norm': [], 'mse': []}}
+results = {group: {'alpha': [], 'l1_norm': [], 'num features': [], 'mse': []} for group in _Xydata[dataset_to_plot]['age_group'].cat.categories}
 
 for alpha in np.linspace(start=0.1, stop=10, num=50): 
     pipeline = Pipeline(steps=[
@@ -106,16 +112,20 @@ for alpha in np.linspace(start=0.1, stop=10, num=50):
         _ygroup = np.array(_Xygroup[[model.name_response_var]]).reshape(-1)
         coef_l1_norm = np.linalg.norm(model.models[group].coef_, ord=1)
         mse = mean_squared_error(_ygroup,model.models[group].predict(_Xgroup))
+        num_features = np.count_nonzero(model.models[group].coef_)
         results[group]['alpha'].append(round(alpha,2))
+        results[group]['num features'].append(num_features)
         results[group]['mse'].append(mse)
         results[group]['l1_norm'].append(coef_l1_norm)
     
-for group in ['child', 'young adults', 'middle age', 'senior']:
+for group in _Xydata[dataset_to_plot][grouping_column].cat.categories:
+    print(group)
     print(pd.DataFrame(results[group]))
 
 # L1 norm vs. penalty term plot
 fig1, ax1 = plt.subplots()
-ax1.plot(results['child']['alpha'], results['child']['l1_norm'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
+if 'child' in _Xydata[dataset_to_plot][grouping_column].cat.categories:
+    ax1.plot(results['child']['alpha'], results['child']['l1_norm'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
 ax1.plot(results['young adults']['alpha'], results['young adults']['l1_norm'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6)
 ax1.plot(results['middle age']['alpha'], results['middle age']['l1_norm'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6)
 ax1.plot(results['senior']['alpha'], results['senior']['l1_norm'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6)
@@ -126,7 +136,8 @@ ax1.legend()
 
 # MSE vs. penalty term plot
 fig2, ax2 = plt.subplots()
-ax2.plot(results['child']['alpha'], results['child']['mse'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
+if 'child' in _Xydata[dataset_to_plot][grouping_column].cat.categories:
+    ax2.plot(results['child']['alpha'], results['child']['mse'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
 ax2.plot(results['young adults']['alpha'], results['young adults']['mse'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6)
 ax2.plot(results['middle age']['alpha'], results['middle age']['mse'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6)
 ax2.plot(results['senior']['alpha'], results['senior']['mse'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6)
@@ -134,4 +145,16 @@ plt.xlabel('alpha')
 plt.ylabel('MSE')
 plt.title('MSE of coefficient vector vs penalty term', fontdict={'fontweight': 'bold', 'fontsize': 15})
 ax2.legend()
+
+# Number of non-zero features in parameter vector vs penalty term plot
+fig3, ax3 = plt.subplots()
+if 'child' in _Xydata[dataset_to_plot][grouping_column].cat.categories: 
+    ax3.plot(results['child']['alpha'], results['child']['num features'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
+ax3.plot(results['young adults']['alpha'], results['young adults']['num features'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6)
+ax3.plot(results['middle age']['alpha'], results['middle age']['num features'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6)
+ax3.plot(results['senior']['alpha'], results['senior']['num features'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6)
+plt.xlabel('alpha')
+plt.ylabel('Number of non-zero features')
+plt.title('Number of non-zero features vs penalty term', fontdict={'fontweight': 'bold', 'fontsize': 15})
+ax3.legend()
 plt.show()

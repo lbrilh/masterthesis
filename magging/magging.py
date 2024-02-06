@@ -115,7 +115,7 @@ class Magging(BaseEstimator):
 
         self.name_response_var = name_response_var
       
-        Xygrouped = Xy.groupby(by=self.grouping_column)
+        Xygrouped = Xy.groupby(by=self.grouping_column, observed=False)
 
         for group_name, group_data in Xygrouped:
             if len(group_data) >= min_values:
