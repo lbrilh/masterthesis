@@ -6,6 +6,7 @@
 
 * Create
 * coded and evaluated statistical methods:
+  * Anchor Regression
 * scikit-learn compatible implementation
 *  
 
