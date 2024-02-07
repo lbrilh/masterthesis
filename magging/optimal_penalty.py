@@ -83,11 +83,10 @@ Preprocessor = ColumnTransformer(
 dataset_to_plot = 'mimic'
 
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
-'''print(Xy.columns)
 sns.kdeplot(Xy['numeric__fio2'])
 plt.show()
 raise ValueError
-'''
+
 # dict to store the results
 results = {group: {'alpha': [], 'l1_norm': [], 'num features': [], 'mse': []} for group in _Xydata[dataset_to_plot]['age_group'].cat.categories}
 
