@@ -1,4 +1,4 @@
-''' This script calculates the magging estimator for an artifical dataset and plots it (2D).
+''' This script calculates the magging estimator for an artifical dataset and plots it (2D). Problem: X is wrong - we need np.identity(2) in order to be useful
 '''
 
 
