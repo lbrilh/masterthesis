@@ -44,6 +44,16 @@ else:
     for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
         _Xydata[dataset][category].fillna(value='N/A', inplace=True)
 
+
+# KDE for outdome across datasets
+hr = {}
+for dataset in ['eicu', 'hirid', 'mimic', 'miiv']:
+    hr[dataset]=_Xydata[dataset]['outcome']
+
+_df_hr = pd.DataFrame(hr)
+plt.subplots()
+sns.kdeplot(_df_hr, fill=True, linewidth=2, alpha=0.3, common_norm=False)
+
 # Population pie charts
 for dataset in ['eicu', 'hirid', 'mimic', 'miiv']:
     _Xydata[dataset][category] = _Xydata[dataset][category].cat.remove_unused_categories()
@@ -80,7 +90,7 @@ for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
 
     # KDE Plot
     ax = sns.kdeplot(data=_Xydata[dataset], x='outcome', hue=category, common_norm=False, hue_order=df_categories,
-                palette='crest', fill=True, linewidth=0, alpha=0.5, legend=False)
+                palette='crest', fill=True, linewidth=2.5, alpha=0.5, legend=False)
     ax.set_xlabel('')
     ax.set_ylabel('')
     sns.set_style('ticks')

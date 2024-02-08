@@ -83,9 +83,9 @@ Preprocessor = ColumnTransformer(
 dataset_to_plot = 'mimic'
 
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
-sns.kdeplot(Xy['numeric__fio2'])
+'''sns.kdeplot(Xy['numeric__fio2'])
 plt.show()
-raise ValueError
+raise ValueError'''
 
 # dict to store the results
 results = {group: {'alpha': [], 'l1_norm': [], 'num features': [], 'mse': []} for group in _Xydata[dataset_to_plot]['age_group'].cat.categories}
@@ -118,10 +118,10 @@ for group in _Xydata[dataset_to_plot][grouping_column].cat.categories:
 # L1 norm vs. penalty term plot
 fig1, ax1 = plt.subplots()
 if 'child' in _Xydata[dataset_to_plot][grouping_column].cat.categories:
-    ax1.plot(results['child']['alpha'], results['child']['l1_norm'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
-ax1.plot(results['young adults']['alpha'], results['young adults']['l1_norm'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6)
-ax1.plot(results['middle age']['alpha'], results['middle age']['l1_norm'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6)
-ax1.plot(results['senior']['alpha'], results['senior']['l1_norm'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6)
+    ax1.plot(results['child']['alpha'], results['child']['l1_norm'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6 , linewidth=3)
+ax1.plot(results['young adults']['alpha'], results['young adults']['l1_norm'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6, linewidth=3)
+ax1.plot(results['middle age']['alpha'], results['middle age']['l1_norm'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6, linewidth=3)
+ax1.plot(results['senior']['alpha'], results['senior']['l1_norm'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6, linewidth=3)
 plt.xlabel('alpha')
 plt.ylabel('L1 norm')
 plt.title('L1 norm of coefficient vector vs penalty term', fontdict={'fontweight': 'bold', 'fontsize': 15})
@@ -130,10 +130,10 @@ ax1.legend()
 # MSE vs. penalty term plot
 fig2, ax2 = plt.subplots()
 if 'child' in _Xydata[dataset_to_plot][grouping_column].cat.categories:
-    ax2.plot(results['child']['alpha'], results['child']['mse'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
-ax2.plot(results['young adults']['alpha'], results['young adults']['mse'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6)
-ax2.plot(results['middle age']['alpha'], results['middle age']['mse'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6)
-ax2.plot(results['senior']['alpha'], results['senior']['mse'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6)
+    ax2.plot(results['child']['alpha'], results['child']['mse'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6, linewidth=3)
+ax2.plot(results['young adults']['alpha'], results['young adults']['mse'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6, linewidth=3)
+ax2.plot(results['middle age']['alpha'], results['middle age']['mse'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6, linewidth=3)
+ax2.plot(results['senior']['alpha'], results['senior']['mse'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6, linewidth=3)
 plt.xlabel('alpha')
 plt.ylabel('MSE')
 plt.title('MSE of coefficient vector vs penalty term', fontdict={'fontweight': 'bold', 'fontsize': 15})
@@ -142,10 +142,10 @@ ax2.legend()
 # Number of non-zero features in parameter vector vs penalty term plot
 fig3, ax3 = plt.subplots()
 if 'child' in _Xydata[dataset_to_plot][grouping_column].cat.categories: 
-    ax3.plot(results['child']['alpha'], results['child']['num features'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6)
-ax3.plot(results['young adults']['alpha'], results['young adults']['num features'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6)
-ax3.plot(results['middle age']['alpha'], results['middle age']['num features'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6)
-ax3.plot(results['senior']['alpha'], results['senior']['num features'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6)
+    ax3.plot(results['child']['alpha'], results['child']['num features'], label='child', color=(0.48942421, 0.72854938, 0.56751036), alpha=0.6, linewidth=3)
+ax3.plot(results['young adults']['alpha'], results['young adults']['num features'], label='young adults', color=(0.24929311, 0.56486397, 0.5586654), alpha=0.6, linewidth=3)
+ax3.plot(results['middle age']['alpha'], results['middle age']['num features'], label='middle age', color=(0.11131735, 0.39155635, 0.53422678), alpha=0.6, linewidth=3)
+ax3.plot(results['senior']['alpha'], results['senior']['num features'], label='senior', color=(0.14573579, 0.29354139, 0.49847009), alpha=0.6, linewidth=3)
 plt.xlabel('alpha')
 plt.ylabel('Number of non-zero features')
 plt.title('Number of non-zero features vs penalty term', fontdict={'fontweight': 'bold', 'fontsize': 15})

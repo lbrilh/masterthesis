@@ -19,7 +19,8 @@ Regressor='magging'
 grouping_column = 'age_group'
 age_group = True
 dataset_to_plot = 'mimic'
-optimal_alphas = {'child': 1.72, 'young adults': 2.73 , 'middle age': 2.32, 'senior': 1.92}
+oracle_dataset = 'miiv'
+optimal_alphas = {'child': 2.8, 'young adults': 7 , 'middle age': 6.4, 'senior': 5.2}
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -60,9 +61,13 @@ pipeline = Pipeline(steps=[
         ])
 
 Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
+oracle_Xy = Preprocessor.fit_transform(_Xydata[oracle_dataset])
+oracle_X = oracle_Xy.drop(columns=['outcome__outcome', f'grouping_column__{grouping_column}'])
 X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])
 
+
 group_predictions = []
+out_of_sample_prediction = []
 in_group_pred = {}
 for group in ['child', 'young adults', 'middle age', 'senior']:
     model = Lasso(max_iter=10000, alpha=optimal_alphas[group])
@@ -71,12 +76,14 @@ for group in ['child', 'young adults', 'middle age', 'senior']:
     _ygroup = np.array(_Xygroup[['outcome__outcome']]).reshape(-1)
     model.fit(_Xgroup, _ygroup)
     in_group_pred[group] = model.predict(_Xgroup)
+    out_of_sample_prediction.append(model.predict(oracle_X))
     print(model.coef_)
     Sigma = (np.matrix(X).T@np.matrix(X))/np.matrix(X).shape[0]
     u_array = np.array(model.coef_)
-    print(f'Magging distance for group {group}: ', ((u_array).T @ Sigma @ (u_array)))
+    print(f'Magging distance for group {group}: ', ((u_array).T @ Sigma @ (u_array)))   
     group_predictions.append(model.predict(X))
 
+'''
 nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
 ncols = 2
 # Standardized residuals plot
@@ -92,7 +99,7 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.title(group)
 fig.suptitle("Standardized Residuals Plot", fontweight='bold', fontsize=15)
 plt.tight_layout()
-#plt.show()
+plt.show()
 
 nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
 ncols = 2
@@ -112,7 +119,7 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.title(group)
 fig.suptitle("Tukey-Anscombe Plot for Groups", fontweight='bold', fontsize=15)
 plt.tight_layout()
-#plt.show()
+plt.show()
 
 # QQ Plot
 nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
@@ -129,7 +136,7 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.title(group)
 plt.suptitle(f'QQ Plot', fontweight='bold', fontsize=15)
 plt.tight_layout()
-#plt.show()
+plt.show()
 
 # Correlation plot
 for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
@@ -140,14 +147,14 @@ for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
     plt.ylabel('y')
     plt.gca().spines['top'].set_visible(False)
     plt.gca().spines['right'].set_visible(False)
-#    plt.show()
-
+    plt.show()
+'''
 group_prediction_matrix = np.matrix(group_predictions).T
 r = group_prediction_matrix.shape[1]
 if r == 1:
     print('Warning: Only one group exists!')
 fhat = group_prediction_matrix
-H = fhat.T @ fhat / X.shape[0]
+H = fhat.T @ fhat / oracle_X.shape[0]
 
 print(np.linalg.eigvals(H))
 
@@ -166,6 +173,9 @@ solution = solvers.qp(P, q, G, h, A, b)
 w = np.array(solution['x']).round(4).flatten() # Magging weights
 print(w)
 
+y_pred = np.dot(w, out_of_sample_prediction)
+mse = mean_squared_error(oracle_Xy['outcome__outcome'].values, y_pred)
+print(mse)
 
 raise ValueError
 pipeline.named_steps['model'].group_predictions(X)
