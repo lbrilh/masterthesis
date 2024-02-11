@@ -48,7 +48,7 @@ for r in range(2,len(datasets)):
 
 for dataset in datasets:
     print(f'Start with CV on {dataset}')
-    search = GridSearchCV(pipeline, param_grid={'model__alpha': np.linspace(0.01,10,10)})
+    search = GridSearchCV(pipeline, param_grid={'model__alpha': np.linspace(0.01,10,50)})
     search.fit(_Xydata[dataset], _Xydata[dataset]['outcome'])
     for r in range(2,len(datasets)):
         for group_combination in combinations(datasets,r):
@@ -60,28 +60,34 @@ for dataset in datasets:
                 }
     print(f'Done with {dataset}')
 
-print(_results)
-pd.DataFrame(_results).to_parquet('all_datasets')
+#print(_results)
 
-raise ValueError
+_weights = {}
 
+for r in range(2, len(datasets)):
+    for group_combination in combinations(datasets,r):
+        n_obs = pd.concat([_Xydata[group] for group in group_combination]).shape[0]
+        fhat = np.column_stack([_results[group][group_combination]['pred'] for group in group_combination])
+        H = fhat.T @ fhat / n_obs
 
-r = 3
-fhat = np.column_stack([_results[dataset]['pred'] for dataset in ['mimic', 'hirid', 'eicu']])
-H = fhat.T @ fhat # / n_obs
+        if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
+            print("Attention: Matrix H is not positive definite")
+        H += 1e-5
 
-if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
-    print("Attention: Matrix H is not positive definite")
-H += 1e-5
+        P = matrix(H)
+        q = matrix(np.zeros(r))
+        G = matrix(-np.eye(r))
+        h = matrix(np.zeros(r))
+        A = matrix(1.0, (1, r))
+        b = matrix(1.0)
 
-P = matrix(H)
-q = matrix(np.zeros(r))
-G = matrix(-np.eye(r))
-h = matrix(np.zeros(r))
-A = matrix(1.0, (1, r))
-b = matrix(1.0)
+        # Solve the quadratic program to obtain magging weights
+        solution = solvers.qp(P, q, G, h, A, b)
+        w = np.array(solution['x']).round(decimals=4).flatten() # Magging weights
+        print(group_combination, ' with Magging weights: ', w)
+        _weights[group_combination] = {
+             'weights': w
+        }
 
-# Solve the quadratic program to obtain magging weights
-solution = solvers.qp(P, q, G, h, A, b)
-w = np.array(solution['x']).round(decimals=4).flatten() # Magging weights
-print('Magging weights: ', w)
+print(pd.DataFrame(_weights))
+pd.DataFrame(_weights).to_latex()
