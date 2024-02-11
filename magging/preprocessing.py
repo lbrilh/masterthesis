@@ -94,7 +94,7 @@ def make_anchor_preprocessing(anchor_columns=None):
     return column_transformer
 
 
-def make_feature_preprocessing(grouping_column, outcome, missing_indicator=True, categorical_indicator=True, lgbm=False):
+def make_feature_preprocessing(outcome, grouping_column=None, missing_indicator=True, categorical_indicator=True, lgbm=False):
     """Make preprocessing for features."""
     if categorical_indicator: 
         preprocessors = [
@@ -170,7 +170,23 @@ def make_feature_preprocessing(grouping_column, outcome, missing_indicator=True,
                     ]
                 ),
                 NUMERICAL_COLUMNS,
-            )
+            ),
+            (
+                "categorical",
+                Pipeline(
+                    [
+                        (
+                            "impute",
+                            SimpleImputer(strategy="constant", fill_value="missing"),
+                        ),
+                        (
+                            "encode",
+                            OneHotEncoder(handle_unknown="ignore", sparse_output=False),
+                        ),
+                    ]
+                ),
+                CATEGORICAL_COLUMNS,
+            ),
         ]
     if missing_indicator:
         preprocessors += [

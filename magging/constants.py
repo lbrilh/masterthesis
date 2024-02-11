@@ -18,7 +18,7 @@ NUMERICAL_COLUMNS = [
     "crp",
     "dbp",
     "fgn",
-    #"fio2",
+    "fio2",
     "glu",
     "height",
     "hgb",
