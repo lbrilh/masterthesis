@@ -11,6 +11,7 @@ from sklearn.linear_model import Lasso
 from sklearn.compose import ColumnTransformer
 from preprocessing import make_feature_preprocessing
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_squared_error
 from cvxopt import matrix, solvers
 from itertools import combinations
 
@@ -54,16 +55,14 @@ for dataset in datasets:
         for group_combination in combinations(datasets,r):
             if dataset in group_combination:
                 _results[dataset][group_combination] = {
-                    'alpha': search.best_params_,
+                    'alpha': search.best_params_['model__alpha'],
                     '_coef': search.best_estimator_.named_steps['model'].coef_,
                     'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
                 }
     print(f'Done with {dataset}')
 
-#print(_results)
 
-_weights = {}
-
+_results = {dataset: {} for dataset in datasets}
 for r in range(2, len(datasets)):
     for group_combination in combinations(datasets,r):
         n_obs = pd.concat([_Xydata[group] for group in group_combination]).shape[0]
@@ -85,9 +84,21 @@ for r in range(2, len(datasets)):
         solution = solvers.qp(P, q, G, h, A, b)
         w = np.array(solution['x']).round(decimals=4).flatten() # Magging weights
         print(group_combination, ' with Magging weights: ', w)
-        _weights[group_combination] = {
-             'weights': w
-        }
-
-print(pd.DataFrame(_weights))
-pd.DataFrame(_weights).to_latex()
+        for dataset in datasets:
+            if dataset not in group_combination:
+                print(dataset)
+                predictions = []
+                for group in group_combination:
+                    pipeline.named_steps['model'].alpha = _results[group][group_combination]['alpha']
+                    pipeline.fit(_Xydata[group], _Xydata[group]['outcome'])
+                    predictions.append(np.array(pipeline.predict(_Xydata[dataset])))
+                if predictions:
+                    y_pred = np.dot(w, predictions)
+                    _results[dataset][group_combination] = {
+                        'weights': w,
+                        'mse':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred)
+                    }
+print(_results)
+print(pd.DataFrame(_results))
+#pd.DataFrame(_results).to_latex()
+print('Script run successfull')
