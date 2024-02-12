@@ -86,7 +86,6 @@ for r in range(2, len(datasets)):
         print(group_combination, ' with Magging weights: ', w)
         for dataset in datasets:
             if dataset not in group_combination:
-                print(dataset)
                 predictions = []
                 for group in group_combination:
                     pipeline.named_steps['model'].alpha = _results_groups[group][group_combination]['alpha']
