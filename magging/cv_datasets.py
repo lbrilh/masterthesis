@@ -43,9 +43,6 @@ pipeline = Pipeline(steps=[
 
 datasets = ['mimic', 'hirid', 'eicu', 'miiv']
 _results = {dataset: {} for dataset in datasets} 
-for r in range(2,len(datasets)):
-        for group_combination in combinations(datasets,r):
-             print(group_combination)
 
 for dataset in datasets:
     print(f'Start with CV on {dataset}')
@@ -96,7 +93,8 @@ for r in range(2, len(datasets)):
                     y_pred = np.dot(w, predictions)
                     _results[dataset][group_combination] = {
                         'weights': w,
-                        'mse':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred)
+                        'mse magging':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred), 
+                        'mse single groups': [mean_squared_error(_Xydata[dataset]['outcome'], prediction) for prediction in predictions]
                     }
 print(_results)
 print(pd.DataFrame(_results))
