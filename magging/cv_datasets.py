@@ -42,7 +42,10 @@ pipeline = Pipeline(steps=[
         )
 
 datasets = ['mimic', 'hirid', 'eicu', 'miiv']
-_results = {dataset: {} for dataset in datasets} 
+_results_groups = {dataset: {} for dataset in datasets} 
+for r in range(2,len(datasets)):
+        for group_combination in combinations(datasets,r):
+             print(group_combination)
 
 for dataset in datasets:
     print(f'Start with CV on {dataset}')
@@ -51,7 +54,7 @@ for dataset in datasets:
     for r in range(2,len(datasets)):
         for group_combination in combinations(datasets,r):
             if dataset in group_combination:
-                _results[dataset][group_combination] = {
+                _results_groups[dataset][group_combination] = {
                     'alpha': search.best_params_['model__alpha'],
                     '_coef': search.best_estimator_.named_steps['model'].coef_,
                     'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
@@ -59,11 +62,11 @@ for dataset in datasets:
     print(f'Done with {dataset}')
 
 
-_results = {dataset: {} for dataset in datasets}
+_magging_results = {dataset: {} for dataset in datasets}
 for r in range(2, len(datasets)):
     for group_combination in combinations(datasets,r):
         n_obs = pd.concat([_Xydata[group] for group in group_combination]).shape[0]
-        fhat = np.column_stack([_results[group][group_combination]['pred'] for group in group_combination])
+        fhat = np.column_stack([_results_groups[group][group_combination]['pred'] for group in group_combination])
         H = fhat.T @ fhat / n_obs
 
         if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
@@ -86,17 +89,18 @@ for r in range(2, len(datasets)):
                 print(dataset)
                 predictions = []
                 for group in group_combination:
-                    pipeline.named_steps['model'].alpha = _results[group][group_combination]['alpha']
+                    pipeline.named_steps['model'].alpha = _results_groups[group][group_combination]['alpha']
                     pipeline.fit(_Xydata[group], _Xydata[group]['outcome'])
                     predictions.append(np.array(pipeline.predict(_Xydata[dataset])))
                 if predictions:
                     y_pred = np.dot(w, predictions)
-                    _results[dataset][group_combination] = {
+                    _magging_results[dataset][group_combination] = {
                         'weights': w,
-                        'mse magging':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred), 
+                        'mse Magging':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred),
                         'mse single groups': [mean_squared_error(_Xydata[dataset]['outcome'], prediction) for prediction in predictions]
+
                     }
-print(_results)
-print(pd.DataFrame(_results))
+print(_magging_results)
+print(pd.DataFrame(_magging_results))
 #pd.DataFrame(_results).to_latex()
 print('Script run successfull')
