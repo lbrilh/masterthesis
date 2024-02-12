@@ -97,6 +97,7 @@ for r in range(2, len(datasets)):
                     _magging_results[dataset][group_combination] = {
                         'weights': w,
                         'mse Magging':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred),
+                        'Matrix p.d.': all(np.linalg.eigvals(H) > 0),
                         'mse single groups': [mean_squared_error(_Xydata[dataset]['outcome'], prediction) for prediction in predictions]
 
                     }
