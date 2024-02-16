@@ -8,10 +8,12 @@ import numpy as np
 from cvxopt import matrix, solvers
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Lasso
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_squared_error
+from scipy.linalg import block_diag
 
-
-X = np.identity(3) # predictor matrix 
+'''X = np.identity(3) # predictor matrix 
 
 B = np.matrix('0.5 1.5 2; 1 0.5 1') # matrix containing group coefficient estimators
 
@@ -43,7 +45,7 @@ print()
 # Your matrix B
 B = np.matrix('0.5 1.5 2; 1 0.5 1')
 # Create a figure and axis for the plot
-'''
+
 fig, ax = plt.subplots()
 
 ax.plot([B[0,0],B[0,1]], [B[1,0],B[1,1]], '-ok')
@@ -62,10 +64,13 @@ ax.annotate('b_DSL', xy=(0.5,0.55), color='blue')
 plt.fill([0.5,1.5,2],[1,0.5,1], color='k', alpha=0.2)
 plt.xticks([0,1,2])
 plt.yticks([0,0.5,1])
-plt.show()'''
-
+plt.show()
+'''
 
 ######## Random comparison DSL, Magging
+
+alphas = np.exp(np.linspace(np.log(0.1),np.log(100),10))
+ratios = np.exp(np.linspace(np.log(0.1), np.log(100000), 500))
 
 betas = []
 beta_hats = []
@@ -74,13 +79,30 @@ f_hats = []
 n_sources = 4
 n_samples = 5*n_sources
 X = np.random.normal(size=(n_samples, 2))
-model = LinearRegression()
+y = np.array([])
+model = Lasso()
+######## choose best alpha
 for source in range(n_sources):
     betas.append(np.random.normal(loc=[5, 4], size=2))
-    y = np.matmul(X[source*5:(source+1)*5],betas[source]).reshape(5,1) + np.random.normal(size=(int(n_samples/n_sources),1))
-    beta_hats.append(model.fit(X[source*5:(source+1)*5],y).coef_)
-    print(model.predict(X).reshape((1,n_samples)))
-    f_hats.append(model.predict(X).reshape((1,n_samples)))
+    X_group = X[source*5:(source+1)*5]
+    y_group = np.matmul(X_group,betas[source]).reshape(5,1) + np.random.normal(size=(int(n_samples/n_sources),1))
+    y = np.append(y, y_group)
+    best_alpha = 0
+    best_mse = float('inf')
+    for alpha in alphas:
+        model.alpha = alpha
+        model.fit(X_group, y_group)
+        model_mse = mean_squared_error(model.predict(X_group), y_group)
+        if best_mse > model_mse: 
+            best_alpha = alpha
+            best_mse = model_mse
+    model.alpha = best_alpha
+    model.fit(X_group,y_group)
+    print('group: ', source ,' best alpha: ', best_alpha, ' best_mse: ', best_mse)
+    beta_hats.append(model.coef_)
+    y_pred = model.predict(X).reshape((1,n_samples))
+    print(y_pred)
+    f_hats.append(y_pred)
 
 print('betas: ', betas)
 print()
@@ -113,23 +135,45 @@ w = np.array(solution['x']).round(4).flatten() # Magging weights
 print(w)
 betas_points = np.vstack([betas[source] for source in range(n_sources)])
 hull_betas = ConvexHull([betas[source] for source in range(n_sources)])
-'''fig, ax = plt.subplots()
-for source in range(n_sources):
-    ax.plot(betas[source][0], betas[source][1], 'ok')
-
-ax.plot(betas_points[hull_betas.vertices,0], betas_points[hull_betas.vertices,1], '-ok', lw=2)
-ax.plot([betas_points[hull_betas.vertices[0]][0], betas_points[hull_betas.vertices[-1]][0]], 
-        [betas_points[hull_betas.vertices[0]][1], betas_points[hull_betas.vertices[-1]][1]], '-ok', lw=2)
-plt.show()'''
 
 fig, ax = plt.subplots()
 convex_hull_plot_2d(hull_betas, ax)
 beta_hats_points = np.vstack([beta_hats[source] for source in range(n_sources)])
+hull_beta_hats = ConvexHull(beta_hats_points)
+convex_hull_plot_2d(hull_beta_hats, ax)
 b_magging = np.dot(w,beta_hats_points)
 print(b_magging)
 ax.plot(b_magging[0],b_magging[1], 'or')
-ax.annotate('b_magging', xy=(b_magging[0]-0.1, b_magging[1]-0.3), color='red')
-hull_beta_hats = ConvexHull(beta_hats_points)
-convex_hull_plot_2d(hull_beta_hats, ax)
-ax.set(xlim=(3,7), ylim=(2,6))
+#ax.annotate('b_magging', xy=(b_magging[0]-0.1, b_magging[1]-0.3), color='red')
+ax.set(xlim=(0,10), ylim=(0,10))
+#plt.show()
+
+_dsl_coef = []
+best_dsl_mse = float('inf')
+dsl_best_ratio = 0
+dsl_best_alpha = 0
+
+for ratio in ratios: 
+    diag = ratio*block_diag(X[0*5:(0+1)*5], X[1*5:(1+1)*5], X[2*5:(2+1)*5], X[3*5:(3+1)*5])
+    augmented_X = np.hstack((X, diag))
+    for alpha in alphas: 
+        model = Lasso(alpha)
+        model.fit(augmented_X, y)
+        model_mse = mean_squared_error(model.predict(augmented_X), y)
+        if best_dsl_mse > model_mse:
+            best_dsl_mse = model_mse
+            dsl_best_ratio = ratio
+            dsl_best_alpha = alpha
+        _dsl_coef.append(model.coef_[:2])
+
+for coef in _dsl_coef:
+    ax.plot(coef[0], coef[1], 'og', alpha = 0.05)
+
+model = Lasso(dsl_best_alpha, max_iter=1000000000)
+
+diag = dsl_best_ratio*block_diag(X[0*5:(0+1)*5], X[1*5:(1+1)*5], X[2*5:(2+1)*5], X[3*5:(3+1)*5])
+augmented_X = np.hstack((X, diag))
+model.fit(augmented_X, y)
+best_dsl_coef_ = model.coef_[:2]
+ax.plot(best_dsl_coef_[0], best_dsl_coef_[1], 'ok')
 plt.show()
