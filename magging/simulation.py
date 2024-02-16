@@ -1,7 +1,7 @@
 ''' This script calculates the magging estimator for an artifical dataset and plots it (2D). Problem: X is wrong - we need np.identity(2) in order to be useful
 '''
 
-
+import pandas as pd
 
 from magging import Magging
 import numpy as np
@@ -69,8 +69,8 @@ plt.show()
 
 ######## Random comparison DSL, Magging
 
-alphas = np.exp(np.linspace(np.log(0.1),np.log(100),10))
-ratios = np.exp(np.linspace(np.log(0.1), np.log(100000), 500))
+alphas = np.exp(np.linspace(np.log(0.0001),np.log(10),100))
+ratios = np.exp(np.linspace(np.log(10), np.log(10), 1))
 
 betas = []
 beta_hats = []
@@ -153,6 +153,9 @@ best_dsl_mse = float('inf')
 dsl_best_ratio = 0
 dsl_best_alpha = 0
 
+results = pd.DataFrame(columns=["ratio", "alpha", "mse", "coef0", "coef1"], index=range(len(ratios)*len(alphas)))
+idx = 0
+
 for ratio in ratios: 
     diag = ratio*block_diag(X[0*5:(0+1)*5], X[1*5:(1+1)*5], X[2*5:(2+1)*5], X[3*5:(3+1)*5])
     augmented_X = np.hstack((X, diag))
@@ -166,8 +169,21 @@ for ratio in ratios:
             dsl_best_alpha = alpha
         _dsl_coef.append(model.coef_[:2])
 
-for coef in _dsl_coef:
-    ax.plot(coef[0], coef[1], 'og', alpha = 0.05)
+        results.iloc[idx] = (ratio, alpha, model_mse, model.coef_[0], model.coef_[1])
+        idx +=1
+
+mask = np.abs(results["ratio"] - 10) <= 1e-6
+results = results[mask]
+plt.close()
+plt.plot(np.log(results["alpha"]), results["mse"])
+plt.show()
+
+# for coef in _dsl_coef:
+#     ax.plot(coef[0], coef[1], 'og', alpha = 0.05)
+for idx in range(len(results)):
+    r = np.log10(results.iloc[idx]["ratio"])
+    ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=((r+2)/3, (1 - r)/3, 0), alpha=0.05)
+
 
 model = Lasso(dsl_best_alpha, max_iter=1000000000)
 
