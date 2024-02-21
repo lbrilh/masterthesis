@@ -69,8 +69,10 @@ plt.show()
 
 ######## Random comparison DSL, Magging
 
-alphas = np.exp(np.linspace(np.log(0.0001),np.log(10),100))
-ratios = np.exp(np.linspace(np.log(10), np.log(10), 1))
+np.random.seed(seed=0)
+
+alphas = np.exp(np.linspace(np.log(0.0001),np.log(5), 75))
+ratios = np.exp(np.linspace(np.log(0.001), np.log(5), 5))
 
 betas = []
 beta_hats = []
@@ -80,7 +82,7 @@ n_sources = 4
 n_samples = 5*n_sources
 X = np.random.normal(size=(n_samples, 2))
 y = np.array([])
-model = Lasso()
+model = Lasso(max_iter=100000)
 ######## choose best alpha
 for source in range(n_sources):
     betas.append(np.random.normal(loc=[5, 4], size=2))
@@ -138,29 +140,32 @@ hull_betas = ConvexHull([betas[source] for source in range(n_sources)])
 
 fig, ax = plt.subplots()
 convex_hull_plot_2d(hull_betas, ax)
+vertices = np.matrix([betas_points[vertice] for vertice in hull_betas.vertices])
+ax.fill([vertices[i,0] for i in range(len(hull_betas.vertices))], [vertices[i,1] for i in range(len(hull_betas.vertices))], alpha=0.4, label='True')
 beta_hats_points = np.vstack([beta_hats[source] for source in range(n_sources)])
 hull_beta_hats = ConvexHull(beta_hats_points)
 convex_hull_plot_2d(hull_beta_hats, ax)
+vertices = np.matrix([beta_hats_points[vertice] for vertice in hull_beta_hats.vertices])
+ax.fill([vertices[i,0] for i in range(len(hull_beta_hats.vertices))], [vertices[i,1] for i in range(len(hull_beta_hats.vertices))], alpha=0.4, label='Estimate')
 b_magging = np.dot(w,beta_hats_points)
 print(b_magging)
-ax.plot(b_magging[0],b_magging[1], 'or')
-#ax.annotate('b_magging', xy=(b_magging[0]-0.1, b_magging[1]-0.3), color='red')
-ax.set(xlim=(0,10), ylim=(0,10))
-#plt.show()
+ax.plot(b_magging[0],b_magging[1], 'or', label = 'Magging Estimator')
+ax.set(xlim=(2,8), ylim=(2,6))
+ax.legend()
 
 _dsl_coef = []
 best_dsl_mse = float('inf')
 dsl_best_ratio = 0
 dsl_best_alpha = 0
 
-results = pd.DataFrame(columns=["ratio", "alpha", "mse", "coef0", "coef1"], index=range(len(ratios)*len(alphas)))
+results = pd.DataFrame(columns=["ratio", "alpha", "mse", "coef0", "coef1", "L1 Norm"], index=range(len(ratios)*len(alphas)))
 idx = 0
 
 for ratio in ratios: 
     diag = ratio*block_diag(X[0*5:(0+1)*5], X[1*5:(1+1)*5], X[2*5:(2+1)*5], X[3*5:(3+1)*5])
     augmented_X = np.hstack((X, diag))
     for alpha in alphas: 
-        model = Lasso(alpha)
+        model = Lasso(alpha, max_iter=10000000)
         model.fit(augmented_X, y)
         model_mse = mean_squared_error(model.predict(augmented_X), y)
         if best_dsl_mse > model_mse:
@@ -169,27 +174,20 @@ for ratio in ratios:
             dsl_best_alpha = alpha
         _dsl_coef.append(model.coef_[:2])
 
-        results.iloc[idx] = (ratio, alpha, model_mse, model.coef_[0], model.coef_[1])
+        results.iloc[idx] = (ratio, alpha, model_mse, model.coef_[0], model.coef_[1], np.abs(model.coef_[0])+np.abs(model.coef_[1]))
         idx +=1
 
-mask = np.abs(results["ratio"] - 10) <= 1e-6
-results = results[mask]
-plt.close()
-plt.plot(np.log(results["alpha"]), results["mse"])
-plt.show()
+df = pd.DataFrame(results)
+
+# mask = np.abs(results["ratio"] - 10) <= 1e-6
+# results = results[mask]
+print(df[df['L1 Norm'] <= 1e-6])
 
 # for coef in _dsl_coef:
 #     ax.plot(coef[0], coef[1], 'og', alpha = 0.05)
+
 for idx in range(len(results)):
     r = np.log10(results.iloc[idx]["ratio"])
-    ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=((r+2)/3, (1 - r)/3, 0), alpha=0.05)
+    ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=(0, (r+3)/5, (2 - r)/10), alpha=0.3)
 
-
-model = Lasso(dsl_best_alpha, max_iter=1000000000)
-
-diag = dsl_best_ratio*block_diag(X[0*5:(0+1)*5], X[1*5:(1+1)*5], X[2*5:(2+1)*5], X[3*5:(3+1)*5])
-augmented_X = np.hstack((X, diag))
-model.fit(augmented_X, y)
-best_dsl_coef_ = model.coef_[:2]
-ax.plot(best_dsl_coef_[0], best_dsl_coef_[1], 'ok')
 plt.show()
