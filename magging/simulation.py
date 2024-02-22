@@ -72,22 +72,23 @@ plt.show()
 np.random.seed(seed=0)
 
 alphas = np.exp(np.linspace(np.log(0.0001),np.log(5), 75))
-ratios = np.exp(np.linspace(np.log(0.001), np.log(5), 5))
+ratios = np.exp(np.linspace(np.log(0.001), np.log(5), 10))
 
 betas = []
 beta_hats = []
 f_hats = []
 
 n_sources = 4
-n_samples = 5*n_sources
+n_samples = 50*n_sources
+group_size = int(n_samples/n_sources)
 X = np.random.normal(size=(n_samples, 2))
 y = np.array([])
 model = Lasso(max_iter=100000)
 ######## choose best alpha
 for source in range(n_sources):
-    betas.append(np.random.normal(loc=[5, 4], size=2))
-    X_group = X[source*5:(source+1)*5]
-    y_group = np.matmul(X_group,betas[source]).reshape(5,1) + np.random.normal(size=(int(n_samples/n_sources),1))
+    betas.append(np.random.normal(loc=[group_size, 4], size=2))
+    X_group = X[source*group_size:(source+1)*group_size]
+    y_group = np.matmul(X_group,betas[source]).reshape(group_size,1) + np.random.normal(size=(int(n_samples/n_sources),1))
     y = np.append(y, y_group)
     best_alpha = 0
     best_mse = float('inf')
@@ -150,7 +151,7 @@ ax.fill([vertices[i,0] for i in range(len(hull_beta_hats.vertices))], [vertices[
 b_magging = np.dot(w,beta_hats_points)
 print(b_magging)
 ax.plot(b_magging[0],b_magging[1], 'or', label = 'Magging Estimator')
-ax.set(xlim=(2,8), ylim=(2,6))
+ax.set(xlim=(49,52.5), ylim=(2,6))
 ax.legend()
 
 _dsl_coef = []
@@ -162,7 +163,7 @@ results = pd.DataFrame(columns=["ratio", "alpha", "mse", "coef0", "coef1", "L1 N
 idx = 0
 
 for ratio in ratios: 
-    diag = ratio*block_diag(X[0*5:(0+1)*5], X[1*5:(1+1)*5], X[2*5:(2+1)*5], X[3*5:(3+1)*5])
+    diag = ratio*block_diag(X[0*group_size:(0+1)*group_size], X[1*group_size:(1+1)*group_size], X[2*group_size:(2+1)*group_size], X[3*group_size:(3+1)*group_size])
     augmented_X = np.hstack((X, diag))
     for alpha in alphas: 
         model = Lasso(alpha, max_iter=10000000)
@@ -183,11 +184,22 @@ df = pd.DataFrame(results)
 # results = results[mask]
 print(df[df['L1 Norm'] <= 1e-6])
 
+print(df[df['ratio']>4])
 # for coef in _dsl_coef:
 #     ax.plot(coef[0], coef[1], 'og', alpha = 0.05)
 
 for idx in range(len(results)):
     r = np.log10(results.iloc[idx]["ratio"])
-    ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=(0, (r+3)/5, (2 - r)/10), alpha=0.3)
+    color_intensity = max(0, 1 - r/10)  # Ensure color intensity is within [0, 1] range
+    ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=(0, color_intensity * (r+3)/5, color_intensity * (2 - r)/10), alpha=0.1)
+    #ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=(0, (r+3)/5, (2 - r)/10), alpha=0.1)
 
+# Check DSL when doing r=1/sqrt(G)
+diag = (1/np.sqrt(n_sources))*block_diag(X[0*group_size:(0+1)*group_size], X[1*group_size:(1+1)*group_size], X[2*group_size:(2+1)*group_size], X[3*group_size:(3+1)*group_size])
+augmented_X = np.hstack((X, diag))
+for alpha in alphas: 
+    model = Lasso(alpha, max_iter=10000000)
+    model.fit(augmented_X, y)
+    model_mse = mean_squared_error(model.predict(augmented_X), y)
+    ax.plot(model.coef_[0], model.coef_[1], "ok", alpha=0.4)
 plt.show()
