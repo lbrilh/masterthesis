@@ -49,7 +49,7 @@ NUMERICAL_COLUMNS = [
     "wbc",
     "weight",
 ]
-CATEGORICAL_COLUMNS = ["sex"]
+CATEGORICAL_COLUMNS = []
 ANCHOR_COLUMNS = ["hospital_id"]  # , "source"]
 
 LOG_COLUMNS = [
@@ -192,4 +192,4 @@ RENAMINGS = {
 }
 
 
-SOURCES = ["eicu", "mimic", "hirid", "miiv"]
+SOURCES = ["eicu", "mimic", "hirid", "miiv", "aumc"]
