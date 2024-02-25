@@ -1,3 +1,7 @@
+'''
+Write docstring, understand code, include DSL (should be simply changing the Preprocessing).
+'''
+
 import sys
 import os
 
