@@ -1,6 +1,5 @@
 '''
 Write docstring, understand code, include DSL (should be simply changing the Preprocessing). Include RF.
-Malte Mail treffen.
 '''
 
 import sys
@@ -27,9 +26,14 @@ method = 'lasso'
 data = load_data_for_prediction(outcome=outcome)
 _Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
 
+_Xydata = ((_Xydata['eicu'].concat(_Xydata['mimic'], axis = 1)).concat(_Xydata['miiv'], axis=1)).concat(_Xydata['hirid'], axis=1)
+
+
 Preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
     ).set_output(transform="pandas")
+
+_Xdata = Preprocessor.fit_transform(_Xydata)
 
 
 fig, axs = plt.subplots(2,2, figsize=(15,9))
@@ -47,16 +51,12 @@ def adjust_annotation_positions(ax, xs, ys, labels):
         positions.append(y)
     return positions
 
-for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']): 
+for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']): 
 
     row, col = divmod(i, 2)
     ax = axs[row, col]
 
-    if source == 'all': 
-        _Xytrain = ((_Xydata['eicu'].concat(_Xydata['mimic'], axis = 1)).concat(_Xydata['miiv'], axis=1)).concat(_Xydata['hirid'], axis=1)
-    else: 
-        _Xytrain = _Xydata[source]
-    
+    _Xytrain = _Xydata[source]
     _y = _Xytrain["outcome"]
     _Xtrain = Preprocessor.fit_transform(_Xytrain)
 
@@ -97,3 +97,60 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
 plt.show()
+
+preprocessor = make_feature_preprocessing()
+preprocessor.fit(data["eicu"][0])
+
+interactions = ColumnTransformer(
+    [
+        (
+            "passthrough_features",
+            "passthrough",
+            [
+                column
+                for column in preprocessor.get_feature_names_out()
+                if "anchor" not in column
+            ],
+        ),
+        (
+            "passthrough_anchors",
+            "passthrough",
+            [
+                column
+                for column in preprocessor.get_feature_names_out()
+                if "anchor" in column
+            ],
+        ),
+        (
+            "two_way_interactions",
+            Pipeline(
+                steps=[
+                    (
+                        "column_transformer",
+                        ColumnTransformer(
+                            [
+                                (
+                                    f"{hospital}_{column}".replace("__", "_"),
+                                    PolynomialFeatures(
+                                        degree=(2, 2),
+                                        include_bias=False,
+                                        interaction_only=True,
+                                    ),
+                                    [hospital, column],
+                                )
+                                for column in preprocessor.get_feature_names_out()
+                                if "anchor" not in column
+                                for hospital in preprocessor.get_feature_names_out()
+                                if "anchor" in hospital
+                            ]
+                        ),
+                    ),
+                ]
+            ),
+            [column for column in preprocessor.get_feature_names_out()],
+        ),
+    ]
+)
+pipeline = Pipeline(
+    steps=[("preprocessor", preprocessor), ("interactions", interactions)]
+).set_output(transform="pandas")
