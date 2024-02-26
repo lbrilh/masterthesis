@@ -1,6 +1,19 @@
 '''
-Write docstring, understand code, include DSL (should be simply changing the Preprocessing). Include RF.
-Malte Mail treffen.
+Mo: 
+
+Do preprocessing before DSL estimation. Can I do so (look in DSL paper).
+
+Tue: 
+Write docstring, understand code, include RF.
+Look at the different targets (i.e which might be interesting when considering sepsis?). 
+
+
+Wed: 
+
+Include graphs with and without categorical variable. 
+Include graphs with different preprocessing versions.
+Make plots look cleaner. 
+
 '''
 
 import sys
@@ -31,7 +44,6 @@ Preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
     ).set_output(transform="pandas")
 
-
 fig, axs = plt.subplots(2,2, figsize=(15,9))
 
 # Function to adjust annotations to avoid overlap
@@ -39,21 +51,39 @@ def adjust_annotation_positions(ax, xs, ys, labels):
     positions = []
     last_y = None
     for x, y, label in sorted(zip(xs, ys, labels), key=lambda k: k[1]):
+        if label == 'categorical_sex_male':
+            # Manually adjust position for categorical_sex_male
+            y += 1
+        elif label == 'categorical_sex_female':
+            # Manually adjust position for categorical_sex_female
+            y -= 1
+
         if last_y is not None and abs(y - last_y) < 0.05:  # Adjust threshold as needed
-            y += 0.5  # Adjust spacing as needed
+            y += 1  # Adjust spacing as needed
+        
         ax.annotate(label, xy=(x, y), xytext=(10, 0),
                     textcoords="offset points", ha='left', va='center')
         last_y = y
         positions.append(y)
     return positions
 
+
+
 for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']): 
 
-    row, col = divmod(i, 2)
-    ax = axs[row, col]
+    if source == 'all': 
+        fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
+        plt.tight_layout()  # Adjust the layout
+        plt.savefig(f"{source}_lasso_path_incl_sex")
+        plt.show()
+        plt.close()
+        fig, ax = plt.subplots(figsize=(15,9))
+    else: 
+        row, col = divmod(i, 2)
+        ax = axs[row, col]
 
     if source == 'all': 
-        _Xytrain = ((_Xydata['eicu'].concat(_Xydata['mimic'], axis = 1)).concat(_Xydata['miiv'], axis=1)).concat(_Xydata['hirid'], axis=1)
+        _Xytrain = pd.concat([_Xydata[source] for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
     else: 
         _Xytrain = _Xydata[source]
     
@@ -75,10 +105,10 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     ax.axis("tight")
     
     # Identify the indices of the four largest coefficients in the last step
-    if source == 'eicu':
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-3:]
+    if source == 'eicu':    
+        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
     elif source == 'hirid':
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-2:]
+        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
     else:
         feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
 
@@ -96,4 +126,5 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
 
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
+plt.savefig(f"all_data_lasso_path_incl_sex")
 plt.show()

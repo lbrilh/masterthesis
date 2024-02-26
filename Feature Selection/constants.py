@@ -49,8 +49,8 @@ NUMERICAL_COLUMNS = [
     "wbc",
     "weight",
 ]
-CATEGORICAL_COLUMNS = []
-ANCHOR_COLUMNS = ["hospital_id"]  # , "source"]
+CATEGORICAL_COLUMNS = ['sex', 'source']
+ANCHOR_COLUMNS = ["source"]  # , "source"]
 
 LOG_COLUMNS = [
     "alp",

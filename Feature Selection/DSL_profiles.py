@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import lars_path, LinearRegression
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
 
 from preprocessing import make_feature_preprocessing
@@ -24,82 +25,19 @@ outcome = 'hr'
 method = 'lasso'
 
 data = load_data_for_prediction(outcome=outcome)
+
 _Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
-
-_Xydata = ((_Xydata['eicu'].concat(_Xydata['mimic'], axis = 1)).concat(_Xydata['miiv'], axis=1)).concat(_Xydata['hirid'], axis=1)
-
 
 Preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
     ).set_output(transform="pandas")
 
-_Xdata = Preprocessor.fit_transform(_Xydata)
+_Xdata = {source: Preprocessor.fit_transform(_Xydata[source]) for source in ['eicu', 'mimic', 'miiv', 'hirid']}
 
+_Xtrain = pd.concat([_Xdata[source] for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
+_Xtrain.fillna(0, inplace=True)
 
-fig, axs = plt.subplots(2,2, figsize=(15,9))
-
-# Function to adjust annotations to avoid overlap
-def adjust_annotation_positions(ax, xs, ys, labels):
-    positions = []
-    last_y = None
-    for x, y, label in sorted(zip(xs, ys, labels), key=lambda k: k[1]):
-        if last_y is not None and abs(y - last_y) < 0.05:  # Adjust threshold as needed
-            y += 0.5  # Adjust spacing as needed
-        ax.annotate(label, xy=(x, y), xytext=(10, 0),
-                    textcoords="offset points", ha='left', va='center')
-        last_y = y
-        positions.append(y)
-    return positions
-
-for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']): 
-
-    row, col = divmod(i, 2)
-    ax = axs[row, col]
-
-    _Xytrain = _Xydata[source]
-    _y = _Xytrain["outcome"]
-    _Xtrain = Preprocessor.fit_transform(_Xytrain)
-
-    print(f"Computing regularization path using the LARS on {source} ...")
-    alphas, active, coefs = lars_path(_Xtrain.values, _y.values, method=method, verbose=True)
-
-    xx = np.sum(np.abs(coefs.T), axis=1)
-    xx /= xx[-1]
-    
-    ax.plot(xx, coefs.T)
-    ymin, ymax = ax.get_ylim()
-    ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
-    ax.set_xlabel("|coef| / max|coef|")
-    ax.set_ylabel("Coefficients")
-    ax.set_title(f"LASSO Path - {source}")
-    ax.axis("tight")
-    
-    # Identify the indices of the four largest coefficients in the last step
-    if source == 'eicu':
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-3:]
-    elif source == 'hirid':
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-2:]
-    else:
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
-
-    print(f'Four most important features on {source}: {[list(_Xtrain.columns)[i] for i in np.argsort(np.abs(coefs[:, -1]))[-4:]]}')
-    # Assuming you have a way to map these indices to original feature names
-    feature_names = [list(_Xtrain.columns)[i] for i in feature_indices]
-
-    # Adjusted part to handle annotations
-    xmax = max(xx)
-
-    y_positions = [coefs[i, -1] for i in feature_indices]
-
-    # Dynamically adjust and place annotations to avoid overlap
-    adjust_annotation_positions(ax, [xmax] * len(feature_indices), y_positions, feature_names)
-
-fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
-plt.tight_layout()  # Adjust the layout
-plt.show()
-
-preprocessor = make_feature_preprocessing()
-preprocessor.fit(data["eicu"][0])
+_ytrain = pd.concat([_Xydata[source]['outcome'] for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
 
 interactions = ColumnTransformer(
     [
@@ -108,49 +46,99 @@ interactions = ColumnTransformer(
             "passthrough",
             [
                 column
-                for column in preprocessor.get_feature_names_out()
-                if "anchor" not in column
+                for column in _Xtrain.columns
+                if "categorical__source" not in column
             ],
         ),
         (
-            "passthrough_anchors",
-            "passthrough",
-            [
-                column
-                for column in preprocessor.get_feature_names_out()
-                if "anchor" in column
-            ],
-        ),
-        (
-            "two_way_interactions",
-            Pipeline(
-                steps=[
-                    (
-                        "column_transformer",
-                        ColumnTransformer(
+            "interactions",
+            ColumnTransformer(
                             [
                                 (
-                                    f"{hospital}_{column}".replace("__", "_"),
+                                    f"{source}_{column}".replace('categorical__source_', '').replace("__", "_"),
                                     PolynomialFeatures(
                                         degree=(2, 2),
                                         include_bias=False,
                                         interaction_only=True,
                                     ),
-                                    [hospital, column],
+                                    [source, column],
                                 )
-                                for column in preprocessor.get_feature_names_out()
-                                if "anchor" not in column
-                                for hospital in preprocessor.get_feature_names_out()
-                                if "anchor" in hospital
+                                for source in _Xtrain.columns
+                                if "categorical__source" in source
+                                for column in _Xtrain.columns
+                                if "categorical__source" not in column
                             ]
-                        ),
-                    ),
-                ]
             ),
-            [column for column in preprocessor.get_feature_names_out()],
-        ),
+            [column for column in _Xtrain.columns],
+        )
     ]
 )
+
 pipeline = Pipeline(
-    steps=[("preprocessor", preprocessor), ("interactions", interactions)]
+    steps=[("interactions", interactions)]
 ).set_output(transform="pandas")
+
+_Xtrain_augmented = pipeline.fit_transform(_Xtrain) 
+
+r = 1/np.sqrt(len(['eicu', 'mimic', 'miiv', 'hirid']))
+
+for column in _Xtrain_augmented.columns: 
+    if 'passthrough' not in column: 
+        _Xtrain_augmented[column] = r*_Xtrain_augmented[column]
+    
+
+
+print(f"Computing regularization path using LARS on DSL ...")
+alphas, active, coefs = lars_path(_Xtrain_augmented.values, _ytrain.values, method=method, verbose=True)
+
+coefs_shared = coefs[:51, :]
+
+fig, ax = plt.subplots(figsize=(15,9))
+
+xx = np.sum(np.abs(coefs_shared.T), axis=1)
+xx /= xx[-1]
+
+feature_indices = np.argsort(np.abs(coefs_shared[:, -1]))[-4:]
+feature_names = [list(_Xtrain_augmented.columns)[i] for i in feature_indices]
+print(feature_names)
+
+ax.plot(xx, coefs_shared.T)
+ymin, ymax = ax.get_ylim()
+ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
+ax.set_xlabel("|coef| / max|coef|")
+ax.set_ylabel("Coefficients")
+ax.set_title(f"LASSO Path of shared coeffs in DSL")
+ax.axis("tight")
+
+fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
+plt.tight_layout()  # Adjust the layout
+plt.show()
+plt.close()
+
+fig, axs = plt.subplots(2, 2, figsize=(15,9))
+
+for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']): 
+
+    _coefs = coefs[(1+i)*51:(2+i)*51, :]
+
+    row, col = divmod(i, 2)
+    ax = axs[row, col]
+
+    xx = np.sum(np.abs(_coefs.T), axis=1)
+    xx /= xx[-1]
+
+    feature_indices = np.argsort(np.abs(_coefs[:, -1]))[-4:]
+    feature_names = [list(_Xtrain_augmented.iloc[:, (1+i)*51:(2+i)*51].columns)[j] for j in feature_indices]
+    print(feature_names)
+
+    ax.plot(xx, _coefs.T)
+    ymin, ymax = ax.get_ylim()
+    ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
+    ax.set_xlabel("|coef| / max|coef|")
+    ax.set_ylabel("Coefficients")
+    ax.set_title(f"LASSO Path of DSL on {source}")
+    ax.axis("tight")
+
+fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
+plt.tight_layout()  # Adjust the layout
+plt.show()
