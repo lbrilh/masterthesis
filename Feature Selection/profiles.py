@@ -1,9 +1,9 @@
 '''
 Mo: 
 
-Do preprocessing before DSL estimation. Can I do so (look in DSL paper).
-
 Tue: 
+
+Do preprocessing before DSL estimation. Can I do so (look in DSL paper).
 Write docstring, understand code, include RF.
 Look at the different targets (i.e which might be interesting when considering sepsis?). 
 
