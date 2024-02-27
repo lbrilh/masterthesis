@@ -1,18 +1,15 @@
-'''
-Mo: 
+''' This code calculates and plots the Lasso profiles of predictor variables when using outcome as response variable. 
+    The names of the four most important features are included in the plot.
+    A figure containing the profiles on each data source will be shown at the end. Moreover, the profiles are shown when we 
+    use all data sources at once. 
 
+    
 Tue: 
-
 Do preprocessing before DSL estimation. Can I do so (look in DSL paper).
-Write docstring, understand code, include RF.
-Look at the different targets (i.e which might be interesting when considering sepsis?). 
-
+understand code, interpret pictures, prepare for Malte (How are plots calculated??)
 
 Wed: 
-
-Include graphs with and without categorical variable. 
-Include graphs with different preprocessing versions.
-Make plots look cleaner. 
+Look at the different targets (i.e which might be interesting when considering sepsis?). 
 
 '''
 
@@ -46,35 +43,12 @@ Preprocessor = ColumnTransformer(
 
 fig, axs = plt.subplots(2,2, figsize=(15,9))
 
-# Function to adjust annotations to avoid overlap
-def adjust_annotation_positions(ax, xs, ys, labels):
-    positions = []
-    last_y = None
-    for x, y, label in sorted(zip(xs, ys, labels), key=lambda k: k[1]):
-        if label == 'categorical_sex_male':
-            # Manually adjust position for categorical_sex_male
-            y += 1
-        elif label == 'categorical_sex_female':
-            # Manually adjust position for categorical_sex_female
-            y -= 1
-
-        if last_y is not None and abs(y - last_y) < 0.05:  # Adjust threshold as needed
-            y += 1  # Adjust spacing as needed
-        
-        ax.annotate(label, xy=(x, y), xytext=(10, 0),
-                    textcoords="offset points", ha='left', va='center')
-        last_y = y
-        positions.append(y)
-    return positions
-
-
-
 for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']): 
 
     if source == 'all': 
         fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
         plt.tight_layout()  # Adjust the layout
-        plt.savefig(f"{source}_lasso_path_incl_sex")
+        plt.savefig(f"images/{source}_lasso_path_incl_sex")
         plt.show()
         plt.close()
         fig, ax = plt.subplots(figsize=(15,9))
@@ -116,15 +90,48 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     # Assuming you have a way to map these indices to original feature names
     feature_names = [list(_Xtrain.columns)[i] for i in feature_indices]
 
-    # Adjusted part to handle annotations
     xmax = max(xx)
+    
+    for i, feature_index in enumerate(feature_indices):
+        y_pos = coefs[feature_index, -1]
 
-    y_positions = [coefs[i, -1] for i in feature_indices]
-
-    # Dynamically adjust and place annotations to avoid overlap
-    adjust_annotation_positions(ax, [xmax] * len(feature_indices), y_positions, feature_names)
+        if source == 'hirid':
+            # Place annotation closer to the line's end
+            if feature_names[i] == "categorical__sex_Male":
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, -5), 
+                        textcoords="offset points", ha='left', va='center')
+            elif feature_names[i] == "categorical__sex_Female":
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, +5), 
+                        textcoords="offset points", ha='left', va='center')
+            else:
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 0), 
+                        textcoords="offset points", ha='left', va='center')
+                
+        elif source == 'all':
+            if feature_names[i] == "categorical__sex_Male":
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, +3), 
+                        textcoords="offset points", ha='left', va='center')
+            elif feature_names[i] == "categorical__sex_Female":
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, -3), 
+                        textcoords="offset points", ha='left', va='center')
+            else:
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 0), 
+                        textcoords="offset points", ha='left', va='center')
+                
+        
+        else: 
+            # Place annotation closer to the line's end
+            if feature_names[i] == "categorical__sex_Male":
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 5), 
+                        textcoords="offset points", ha='left', va='center')
+            elif feature_names[i] == "categorical__sex_Female":
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, -5), 
+                        textcoords="offset points", ha='left', va='center')
+            else:
+                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 0), 
+                        textcoords="offset points", ha='left', va='center')
 
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig(f"all_data_lasso_path_incl_sex")
+plt.savefig("images/data_sources_lasso_path_incl_sex.png")
 plt.show()

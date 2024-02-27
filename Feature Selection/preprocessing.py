@@ -94,36 +94,55 @@ def make_anchor_preprocessing(anchor_columns=None):
     return column_transformer
 
 
-def make_feature_preprocessing(missing_indicator=True):
+def make_feature_preprocessing(missing_indicator=True, categorical_indicator=True):
     """Make preprocessing for features."""
-    preprocessors = [
-        (
-            "numeric",
-            Pipeline(
-                steps=[
-                    ("impute", SimpleImputer(strategy="mean")),
-                    ("scale", StandardScaler()),
-                ]
+    if categorical_indicator: 
+        preprocessors = [
+            (
+                "numeric",
+                Pipeline(
+                    steps=[
+                        ("impute", SimpleImputer(strategy="mean")),
+                        ("scale", StandardScaler()),
+                    ]
+                ),
+                NUMERICAL_COLUMNS,
             ),
-            NUMERICAL_COLUMNS,
-        ),
-        (
-            "categorical",
-            Pipeline(
-                [
-                    (
-                        "impute",
-                        SimpleImputer(strategy="constant", fill_value="missing"),
-                    ),
-                    (
-                        "encode",
-                        OneHotEncoder(handle_unknown="ignore", sparse_output=False),
-                    ),
-                ]
+            (
+                "categorical",
+                Pipeline(
+                    [
+                        (
+                            "impute",
+                            SimpleImputer(strategy="constant", fill_value="missing"),
+                        ),
+                        (
+                            "encode",
+                            OneHotEncoder(handle_unknown="ignore", sparse_output=False),
+                        ),
+                    ]
+                ),
+                CATEGORICAL_COLUMNS,
+            )
+        ]
+    else:
+            preprocessors = [
+            (
+                "numeric",
+                Pipeline(
+                    steps=[
+                        ("impute", SimpleImputer(strategy="mean")),
+                        ("scale", StandardScaler()),
+                    ]
+                ),
+                NUMERICAL_COLUMNS,
             ),
-            CATEGORICAL_COLUMNS,
-        )
-    ]
+            (
+                "categorical",
+                FunctionTransformer(lambda x: x.astype("category")),
+                CATEGORICAL_COLUMNS,
+            )
+        ]
     
     if missing_indicator:
         preprocessors += [
