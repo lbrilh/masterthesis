@@ -114,6 +114,7 @@ for color_indice in coef_df['color']:
 
 coef_df.sort_values(by='abs_coefs', inplace=True, ascending=False)
 names = ['hr', 'mimic sex male', 'mimic sex female', 'mimic hr', 'mimic height', 'temp', 'mimic age', 'na', 'sbp', 'eicu temp']
+
 plt.figure(figsize=(12,9))
 sns.barplot(x=coef_df["abs_coefs"].iloc[:10], y=names, orient="h", palette=color_palette[:10])
 plt.xlabel("Absolute Value of Coefficient")
