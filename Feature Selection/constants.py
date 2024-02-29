@@ -49,7 +49,7 @@ NUMERICAL_COLUMNS = [
     "wbc",
     "weight",
 ]
-CATEGORICAL_COLUMNS = ['sex']
+CATEGORICAL_COLUMNS = ['sex', 'source']
 ANCHOR_COLUMNS = ["source"]  # , "source"]
 
 LOG_COLUMNS = [

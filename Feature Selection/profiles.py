@@ -2,13 +2,6 @@
     The names of the four most important features are included in the plot.
     A figure containing the profiles on each data source will be shown at the end. Moreover, the profiles are shown when we 
     use all data sources at once. 
-    
-Tue: 
-understand code, interpret pictures, prepare for Malte
-
-Wed: 
-Look at the different targets (i.e which might be interesting when considering sepsis?). 
-
 '''
 
 import sys
