@@ -2,11 +2,9 @@
     The names of the four most important features are included in the plot.
     A figure containing the profiles on each data source will be shown at the end. Moreover, the profiles are shown when we 
     use all data sources at once. 
-
     
 Tue: 
-Do preprocessing before DSL estimation. Can I do so (look in DSL paper).
-understand code, interpret pictures, prepare for Malte (How are plots calculated??)
+understand code, interpret pictures, prepare for Malte
 
 Wed: 
 Look at the different targets (i.e which might be interesting when considering sepsis?). 
@@ -31,11 +29,11 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'hr'
+outcome = 'map'
 method = 'lasso'
 
 data = load_data_for_prediction(outcome=outcome)
-_Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
+_Xydata = {source: data[source]['train'][lambda x: (x['sex'].isin(['Male', 'Female']))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
 
 Preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
@@ -48,7 +46,7 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     if source == 'all': 
         fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
         plt.tight_layout()  # Adjust the layout
-        plt.savefig(f"images/{source}_lasso_path_incl_sex")
+        plt.savefig(f"images/Lasso/{source}_lasso_path_incl_sex")
         plt.show()
         plt.close()
         fig, ax = plt.subplots(figsize=(15,9))
@@ -63,9 +61,10 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     
     _y = _Xytrain["outcome"]
     _Xtrain = Preprocessor.fit_transform(_Xytrain)
+    y_mean = _y.mean()
 
     print(f"Computing regularization path using the LARS on {source} ...")
-    alphas, active, coefs = lars_path(_Xtrain.values, _y.values, method=method, verbose=True)
+    alphas, active, coefs = lars_path(_Xtrain.to_numpy(), _y.to_numpy()-y_mean, method=method, verbose=True)
 
     xx = np.sum(np.abs(coefs.T), axis=1)
     xx /= xx[-1]
@@ -86,7 +85,7 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     else:
         feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
 
-    print(f'Four most important features on {source}: {[list(_Xtrain.columns)[i] for i in np.argsort(np.abs(coefs[:, -1]))[-4:]]}')
+    print(f'Four most important features on {source}: {[list(_Xtrain.columns)[i] for i in np.argsort(np.abs(coefs[:, -1]))[-6:]]}')
     # Assuming you have a way to map these indices to original feature names
     feature_names = [list(_Xtrain.columns)[i] for i in feature_indices]
 
@@ -133,5 +132,5 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
 
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig("images/data_sources_lasso_path_incl_sex.png")
+plt.savefig("images/Lasso/data_sources_lasso_path_incl_sex.png")
 plt.show()

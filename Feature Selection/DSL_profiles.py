@@ -22,7 +22,7 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'hr'
+outcome = 'map'
 method = 'lasso'
 
 data = load_data_for_prediction(outcome=outcome)
@@ -36,7 +36,11 @@ Preprocessor = ColumnTransformer(
 _Xytrain = pd.concat([_Xydata[source] for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
 
 _ytrain = _Xytrain['outcome']
+y_mean = _ytrain.mean()
 _Xtrain = Preprocessor.fit_transform(_Xytrain)
+'''
+_Xtrain = pd.concat([Preprocessor.fit_transform(_Xydata[source]) for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
+_Xtrain.fillna(0, inplace=True)'''
 
 interactions = ColumnTransformer(
     [
@@ -88,7 +92,7 @@ for column in _Xtrain_augmented.columns:
 
 
 print(f"Computing regularization path using LARS on DSL ...")
-alphas, active, coefs = lars_path(_Xtrain_augmented.values, _ytrain.values, method=method, verbose=True)
+alphas, active, coefs = lars_path(_Xtrain_augmented.to_numpy(), _ytrain.to_numpy() - y_mean, method=method, verbose=True)
 
 coefs_shared = coefs[:51, :]
 
@@ -113,7 +117,7 @@ ax.axis("tight")
 
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig('images/common_effects_DSL.png')
+plt.savefig('images/common_effects_DSL_preprocessed_individ.png')
 plt.show()
 plt.close()
 
@@ -145,5 +149,5 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
 
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig('images/individual_groups_DSL.png')
+plt.savefig('images/individual_groups_DSL_preprocessed_individ.png')
 plt.show()
