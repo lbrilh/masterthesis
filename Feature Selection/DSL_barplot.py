@@ -3,7 +3,8 @@
     Positive coefficients are blue and negative coefficients are red. 
     The penalty term alpha is chosen via cross-validation. 
     The degree of sharing is controlled using r_g. The value of r_g is the relative size of the group to the entire dataset, i.e. larger groups are forced to 
-    share more than smaller groups. Each group is preprocessed individually. 
+    share more than smaller groups. Each group is preprocessed individually.
+    Running this code requires CATEGORICAL_COLUMNS = ['sex', 'source'] in constants.py
 '''
 
 import sys
@@ -116,7 +117,7 @@ coef_df.sort_values(by='abs_coefs', inplace=True, ascending=False)
 names = ['hr', 'mimic sex male', 'mimic sex female', 'mimic hr', 'mimic height', 'temp', 'mimic age', 'na', 'sbp', 'eicu temp']
 
 plt.figure(figsize=(12,9))
-sns.barplot(x=coef_df["abs_coefs"].iloc[:10], y=names, orient="h", palette=color_palette[:10])
+sns.barplot(x=coef_df["abs_coefs"].iloc[:10], y=names, hue=names, orient="h", palette=color_palette[:10], legend=False, alpha=0.5)
 plt.xlabel("Absolute Value of Coefficient")
 plt.tight_layout()
 plt.savefig(f'images/DSL/Barplot_coefs_{outcome}.png')
