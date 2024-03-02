@@ -1,11 +1,3 @@
-'''
-    This code plots the 10 most important coefficients (absolute size) of DSL in a barplot.
-    Positive coefficients are blue and negative coefficients are red. 
-    The penalty term alpha is chosen via cross-validation. 
-    The degree of sharing is controlled using r_g. The value of r_g is the relative size of the group to the entire dataset, i.e. larger groups are forced to 
-    share more than smaller groups. Each group is preprocessed individually.
-    Running this code requires CATEGORICAL_COLUMNS = ['sex', 'source'] in constants.py
-'''
 
 import sys
 import os
@@ -19,7 +11,7 @@ import seaborn as sns
 
 from sklearn.linear_model import Lasso
 from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
 
 from preprocessing import make_feature_preprocessing
@@ -31,6 +23,9 @@ n_states = 10
 
 data = load_data_for_prediction(outcome=outcome)
 _Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
+
+coefs = pd.read_parquet("dsl_coefs.parquet")
+intercept = (pd.read_parquet("dsl_intercepts_random_states.parquet")).mean(axis=1)
 
 # Preprocessing of individual groups
 preprocessor = ColumnTransformer(
@@ -95,39 +90,14 @@ for column in _Xtrain_augmented.columns:
         elif 'hirid' in column: 
             _Xtrain_augmented[column] = 1/np.sqrt(r_g['hirid'])*_Xtrain_augmented[column]
 
-coefs_rs = {}
-intercept_rs = {}
-for random_state in range(n_states):    
-    # Find best penalization parameter
-    parameters = {'alpha': np.linspace(0.001, 10, 100)}
-    search = GridSearchCV(Lasso(max_iter=100000, random_state=random_state), parameters, n_jobs=-1)
-    search.fit(_Xtrain_augmented, _ytrain)
-    coefs_rs[f'random_state {random_state}'] = search.best_estimator_.coef_
-    intercept_rs[f'intercept rs {random_state}'] = search.best_estimator_.intercept_
-pd.DataFrame(intercept_rs).to_parquet("dsl_intercepts_random_states.parquet")
+mse = {}
 
-# Extract coefficients and plot them 
-coefs = pd.DataFrame(coefs_rs)
-coefs["Avg coefs"] = coefs.mean(axis=1)
-coefs['abs_coefs'] = np.abs(coefs["Avg coefs"])
-coefs['feature names'] = search.best_estimator_.feature_names_in_
-coefs['color'] = (coefs['Avg coefs']>=0).astype('bool')
+mse['intercept'] = mean_squared_error(intercept, _ytrain)
 
-color_palette = []
-for color_indice in coefs['color']:
-    if color_indice == 1:
-        color_palette.append('b')
-    else: 
-        color_palette.append('r')
+num_feat = 1
+for i, feature in coefs['feature names'].items():
+    y_pred = intercept + _Xtrain_augmented[coefs['feature names'][:i]]*coefs['Avg coefs'][:i]
+    mse[f'{num_feat} feat.'] = mean_squared_error(_ytrain, y_pred)
 
-coefs.sort_values(by='abs_coefs', inplace=True, ascending=False)
-coefs.to_parquet('dsl_coefs.parquet')
-
-names = ['hr', 'mimic sex male', 'mimic sex female', 'mimic hr', 'mimic height', 'temp', 'mimic age', 'na', 'sbp', 'eicu temp']
-
-plt.figure(figsize=(12,9))
-sns.barplot(x=coefs["abs_coefs"].iloc[:10], y=names, hue=names, orient="h", palette=color_palette[:10], legend=False, alpha=0.5)
-plt.xlabel("Absolute Value of Coefficient")
-plt.tight_layout()
-plt.savefig(f'images/DSL/Barplot_coefs_{outcome}.png')
-plt.show()
+print(pd.DataFrame(mse))
+pd.DataFrame(mse).to_parquet('robust_stability_selection.parquet')
