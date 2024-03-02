@@ -1,8 +1,14 @@
-from data import retrieve_paths, load_data_plotting
+''' 
+    Include the code to plot the MSE vs number of tuning data points.
+'''
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
+from data import retrieve_paths, load_data_plotting
+
+# Generate plots depicting Mean Squared Error (MSE) vs Number of tuning Data Points for different sources
+def plotting(sources, training_source, pattern=r'*_results.pkl'):
     file_paths=retrieve_paths(pattern)
     for source in sources:
         if source==training_source:
@@ -49,7 +55,7 @@ def plotting(methods, sources, training_source, pattern=r'*_results.pkl'):
     plt.show()
     print('Script successfully executed')
 
-
+# Plot the Mean Squared Error (MSE) vs gamma for tuning data points across different sources.
 def plot_tuning_by_gamma(sources, training_source, n_tuning_points):
     _data=load_data_plotting('tuning_by_gamma')
     _df=pd.DataFrame(_data)
@@ -74,4 +80,4 @@ def plot_tuning_by_gamma(sources, training_source, n_tuning_points):
             plt.legend()
             print('New source \n')
     plt.show()
-    print('Script successfully executed')
+print('Script successfully executed')

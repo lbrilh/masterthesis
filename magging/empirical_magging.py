@@ -1,4 +1,5 @@
-''' Calculate the group estimators based on the alphas found in optimal_penalty.py
+''' 
+    Calculate the group estimators based on the alphas found in optimal_penalty.py
 '''
 import os
 import pandas as pd

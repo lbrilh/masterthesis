@@ -1,13 +1,12 @@
-'''This file creates a figure containing a boxplot and a kernel-density estimator plot for 
-the average hr 48-72h after admission categorized by age group. Additionally, it creates
-a population plot. 
 '''
-
+    This file creates a boxplot and a kernel-density estimator plot for the y variable (48-72h after 
+    admission) conditioned on category. Additionally, it creates a population plot. 
+'''
+import os
 
 import seaborn as sns 
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 
 category = 'age_group'
 y = 'outcome'
@@ -26,15 +25,10 @@ def load_data(outcome, source, version='train'):
     return _data 
 
 # Load data and include only admissions with recorded sex
-_Xydata={
-    'eicu': load_data('hr','eicu')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
-    'hirid': load_data('hr','hirid')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
-    'mimic': load_data('hr','mimic')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))],
-    'miiv': load_data('hr','miiv')[lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))]
-}
+_Xydata={source: load_data('hr', source)[lambda x: (x['sex'].isin(['Male', 'Female']))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
 
+# Add category age_group to datasets
 if age_group:
-    # Add category age_group to datasets
     bins = [0, 15, 39, 65, float('inf')]
     labels = ['child', 'young adults', 'middle age', 'senior']
     for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
@@ -44,12 +38,10 @@ else:
     for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
         _Xydata[dataset][category].fillna(value='N/A', inplace=True)
 
-
 # KDE for outdome across datasets
 hr = {}
 for dataset in ['eicu', 'hirid', 'mimic', 'miiv']:
     hr[dataset]=_Xydata[dataset]['outcome']
-
 _df_hr = pd.DataFrame(hr)
 plt.subplots()
 sns.kdeplot(_df_hr, fill=True, linewidth=2, alpha=0.3, common_norm=False)
@@ -61,7 +53,6 @@ for dataset in ['eicu', 'hirid', 'mimic', 'miiv']:
     len_dataset = _Xydata[dataset][category].shape[0]
     labels = _Xydata[dataset][category].value_counts().sort_index()
     fig, ax = plt.subplots()
-    #print(sns.color_palette('crest'))
     if dataset == 'eicu': 
         colors = [(0.48942421, 0.72854938, 0.56751036), (0.24929311, 0.56486397, 0.5586654), (0.11131735, 0.39155635, 0.53422678), (0.14573579, 0.29354139, 0.49847009)]
     elif dataset in ['hirid', 'miiv']: 
@@ -73,6 +64,7 @@ for dataset in ['eicu', 'hirid', 'mimic', 'miiv']:
            autopct=lambda p: int(p/100*len_dataset))
     plt.title(f'Population in {dataset}', fontdict={'fontweight': 'bold', 'fontsize': 15} )
 
+# Create boxplot & kde plot for each group
 for dataset in ['eicu', 'hirid', 'miiv', 'mimic']:
     fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10,5))
     df_categories = _Xydata[dataset][category].cat.categories # ordered categories from DataFrame

@@ -1,19 +1,16 @@
 """
-This script provides diagnostic plots and functions for analyzing Magging models:
-
-1. SqrtAbsStandardizedResid: Plots the standardized residuals after applying a square root
- and absolute transformation.
-
-2. CookDistance: Computes and plots Cook's Distance for each observation.
-
-3. QQPlot: Generates QQ plots for the model's residuals to check for normality.
-
-4. TukeyAnscombe: Creates Tukey-Anscombe plots for analyzing residuals.
+    This script computes diagnostic plots and functions for analyzing Magging models:
+        1. SqrtAbsStandardizedResid: Plots the standardized residuals after applying a square root
+        and absolute transformation.   
+        2. CookDistance: Computes and plots Cook's Distance for each observation.
+        3. QQPlot: Generates QQ plots for the model's residuals to check for normality.
+        4. TukeyAnscombe: Creates Tukey-Anscombe plots for analyzing residuals.
 """
 
-import statsmodels.api as sm
 import numpy as np
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
+
 from magging import Magging
 
 def SqrtAbsStandardizedResid(model, Xy):
@@ -63,7 +60,6 @@ def CookDistance(model, Xy):
         cook_model = sm.OLS(residues, np.ones(n)).fit()
         influence = cook_model.get_influence()
         cooks_distance = influence.cooks_distance[0]
-
         ax = plt.subplot(nrows, ncols, i)
         markerline, stemlines, baseline = plt.stem(cooks_distance, basefmt=' ')
         plt.setp(stemlines, visible=False)
@@ -93,11 +89,8 @@ def QQPlot(model, Xy):
         _Xgroup = _Xygroup.drop(columns=[model.grouping_column, model.name_response_var])
         _ygroup = np.array(_Xygroup[[model.name_response_var]]).reshape(-1)
         residues = np.array(_ygroup - model.models[group].predict(_Xgroup))
-
         ax=plt.subplot(nrows, ncols, i)
-        # Create the QQ plot
         sm.qqplot(residues, line='s', ax=ax)
-        #sm.qqplot(residues, line='s', ax=axes.flatten()[i])
         plt.yticks([-100,0,100])
         plt.title(group)
         i+=1
@@ -123,7 +116,6 @@ def TukeyAnscombe(model, Xy):
         _ygroup = np.array(_Xygroup[[model.name_response_var]]).reshape(-1)
         residues = np.array(_ygroup - model.models[group].predict(_Xgroup))
         tukey_anscombe = (residues - np.mean(residues)) / np.std(residues)
-
         ax = plt.subplot(nrows, ncols, i)
         plt.scatter(np.arange(len(tukey_anscombe)), tukey_anscombe, alpha=0.05)
         plt.yticks([-5,0,5])

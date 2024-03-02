@@ -1,10 +1,14 @@
-from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
+'''
+    Set up parameters and configurations for experiments_script.py
+'''
+
+from lightgbm import LGBMRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression, Ridge
-from lightgbm import LGBMRegressor
-from methods import AnchorBoost, RefitLGBMRegressorCV
-from ivmodels.anchor_regression import AnchorRegression
 
+from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
+from ivmodels.anchor_regression import AnchorRegression
+from methods import AnchorBoost
 
 overwrite = False
 model = 'lgbm'
@@ -13,23 +17,15 @@ sources = ['eicu', 'hirid', 'mimic', 'miiv']
 training_source = 'eicu'
 anchor_columns = ['hospital_id']
 
-n_seeds = 10    
-#### refit doesn't work with 25 and 50 points
-#### and ony using one seed --- otherwise get lgbm error
-n_fine_tuning = [25, 50, 100, 200, 400, 800, 1600]
 
-methods = [
-    #'ols',
-    'ridge',
-    'lgbm',
-    'rf',
-    'anchor',
-    'lgbm_refit'
-]
+n_seeds = 10 # number of seeds to use
+n_fine_tuning = [100, 200, 400, 800, 1600] # number of fine-tuning data points 
+
 boosting_methods=[
     'anchor_lgbm'
 ]
 
+# Initialize the hyperparameter grid based on the model
 hyper_parameters = {
     'ols': None,
     'ridge': {
@@ -79,28 +75,29 @@ hyper_parameters = {
     }
 }
 
+# Initialize the regressor and preprocessor based on the model
 if model=='ols':
-    Regressor=LinearRegression()
-    Preprocessing=ColumnTransformer(transformers=
+    regressor=LinearRegression()
+    preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
 elif model=='ridge':
-    Regressor=Ridge()
-    Preprocessing=ColumnTransformer(transformers=
+    regressor=Ridge()
+    preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
 elif model=='lgbm' or model=='rf' or model=='lgbm_refit':
-    Regressor=LGBMRegressor()
-    Preprocessing=ColumnTransformer(transformers=
+    regressor=LGBMRegressor()
+    preprocessing=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
                                     ).set_output(transform="pandas")
 elif model=='anchor':
-    Regressor=AnchorRegression()
-    Preprocessing=ColumnTransformer(transformers=
+    regressor=AnchorRegression()
+    preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")
 elif model=='anchor_lgbm':
-    Regressor=AnchorBoost()
-    Preprocessing=ColumnTransformer(transformers=
+    regressor=AnchorBoost()
+    preprocessing=ColumnTransformer(transformers=
                                     make_anchor_preprocessing(anchor_columns) + make_feature_preprocessing(missing_indicator=True)
                                     ).set_output(transform="pandas")

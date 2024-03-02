@@ -1,4 +1,5 @@
-''' Find the optimal penalty terms for the groups in magging.
+''' TODO
+Find the optimal penalty terms for the groups in magging.
 ToDo: Find optinmal CV score (add as metric magging distance to groups). 
     What is plot_output? 
     What is PolynomialFeature? Use different metrics / check metrics. (max. explained var).

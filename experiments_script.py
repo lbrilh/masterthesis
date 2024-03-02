@@ -1,23 +1,34 @@
+'''
+    Loads the data and performs either grid search (on train) or fine-tuning (on test) evaluation 
+    on the model specified in set_up.py
+    Fine-tuning approach: Instead of selecting hyperparameters through the usual method of minimizing 
+    the MSE via cv on the training data, the approach evaluates the MSE via CV on a "fine-tuning" dataset
+    (consisting of n fine-tuning datapoints) derived from the test data. 
+    This fine-tuning dataset is excluded from the final evaluation but is used specifically for 
+    tuning hyperparameters. To achieve high generalization, we consider various sample seeds. 
+    The optimal tuning hyperparameters are selected during the process of plotting().
+'''
+import itertools
+
+from lightgbm import LGBMRegressor
+from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
-import itertools
-from plotting import plotting
-from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, anchor_columns, methods, Regressor, Preprocessing, n_fine_tuning
+
+from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, Regressor, Preprocessing, n_fine_tuning
 from data import results_exist, save_data, load_data
+from icu_experiments.preprocessing import make_feature_preprocessing
 from methods import RefitLGBMRegressor
-from icu_experiments.preprocessing import make_feature_preprocessing, make_anchor_preprocessing
-from sklearn.compose import ColumnTransformer
-from lightgbm import LGBMRegressor
+from plotting import plotting
 
-
+# load the data
 _data = load_data(outcome=outcome)
 
-
+# Sex is a categorical variable
 if model == 'lgbm' or model == 'rf' or model == 'lgbm_refit':
     sex_index = _data[training_source]['train'].columns.get_loc('sex')
     _data[training_source]['train']['sex'] = _data[training_source]['train']['sex'].astype('category')
-
 
 pipeline = Pipeline(steps=[
     ('preprocessing', Preprocessing),
@@ -27,7 +38,8 @@ pipeline = Pipeline(steps=[
 boosting_methods=['anchor_lgbm']
 refit_methods=['lgbm_refit']
 
-
+# Classical approach: Perform grid search on train data and evaluation for the specified model using the 
+# optimal hyperparameter found on the train data
 if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting_methods:
     mse_grid_search = []
     if model in ['ols']:
@@ -58,7 +70,9 @@ if not results_exist(path=f'{model}_grid_results.pkl') and model not in boosting
         print(f'Completed {model} run on {source}')
     save_data(path=f'{model}_grid_results.pkl', results=mse_grid_search)
 
-
+# Fine-tuning approach: Use n fine-tuning datapoints from the test data and evaluate hyperparameter based
+# on these fine-tuning datapoints via the MSE. The optimal hyperparameter wil be chosen by 
+# in plotting()
 if not results_exist(path=f'{model}_results.pkl'):
     sample_seeds = list(range(n_seeds))
     results = []
@@ -72,6 +86,7 @@ if not results_exist(path=f'{model}_results.pkl'):
             pipeline.fit(_data[training_source]['train'], _data[training_source]['train']['outcome'])
             for source in sources: 
                 if source != training_source:
+                    # Use different sample seeds for the fine-tuning set 
                     for sample_seed in sample_seeds:      
                         Xy_target_tuning = _data[source]["test"].sample(
                         frac=1, random_state=sample_seed
@@ -157,11 +172,11 @@ if not results_exist(path=f'{model}_results.pkl'):
             hyper_parameters_refit={
                 "decay_rate": [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]
             }
-            Preprocessing_lgbm=ColumnTransformer(transformers=
+            preprocessing_lgbm=ColumnTransformer(transformers=
                                     make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
                                     ).set_output(transform="pandas")
             pipeline = Pipeline(steps=[
-                ('preprocessing', Preprocessing_lgbm),
+                ('preprocessing', preprocessing_lgbm),
                 ('model', RefitLGBMRegressor())
             ])
             for hyper_para_set_refit in itertools.product(*hyper_parameters_refit.values()):
@@ -186,12 +201,7 @@ if not results_exist(path=f'{model}_results.pkl'):
                                         'mse target': mse_evaluation
                                     })
             print(f'finished combination {comb+1} from {num_combinations} using {model}')
-            
-
     save_data(path=f'{model}_results.pkl',results=results)
-
-
-plotting(methods=methods, sources=sources, training_source=training_source)
-
+plotting(sources=sources, training_source=training_source)
 
 print('Script completed with no erros\n')

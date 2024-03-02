@@ -1,10 +1,14 @@
-from icu_experiments.load_data import load_data_for_prediction
-from set_up import sources
+'''    
+    This file contains functions for loading, saving, and manipulating data and results stored
+    in Parquet format. 
+'''
+
 import os
 import glob
-import pickle
 import pandas as pd
 
+from icu_experiments.load_data import load_data_for_prediction
+from set_up import sources
 
 def load_data(outcome):
     current_directory = os.getcwd()

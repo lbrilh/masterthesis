@@ -1,76 +1,20 @@
-''' This script calculates the magging estimator for an artifical dataset and plots it (2D). Problem: X is wrong - we need np.identity(2) in order to be useful
+''' 
+    ToDo Comments
 '''
 
-import pandas as pd
-
-from magging import Magging
 import numpy as np
-from cvxopt import matrix, solvers
+import pandas as pd
 import matplotlib.pyplot as plt
+
+from cvxopt import matrix, solvers
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
-from sklearn.linear_model import Lasso
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_squared_error
 from scipy.linalg import block_diag
-
-'''X = np.identity(3) # predictor matrix 
-
-B = np.matrix('0.5 1.5 2; 1 0.5 1') # matrix containing group coefficient estimators
-
-fhat = np.matrix('0.5 1.5 2; 1 0.5 1') # fhat == B 
-
-# Set-up of the quadratic program to determine magging weights
-r = 3
-if r == 1:
-    print('Warning: Only one group exists!')
-H = fhat.T @ fhat / X.shape[0]
-
-print(np.linalg.eigvals(H))
-
-if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
-    print("Warning: Matrix H is not positive definite")
-    H += 1e-5
-P = matrix(H)
-q = matrix(np.zeros(r))
-G = matrix(-np.eye(r))
-h = matrix(np.zeros(r))
-A = matrix(1.0, (1, r))
-b = matrix(1.0)
-
-# Solve the quadratic program to obtain magging weights
-solution = solvers.qp(P, q, G, h, A, b)
-w = np.array(solution['x']).round(4).flatten() # Magging weights
-print(w)
-print()
-# Your matrix B
-B = np.matrix('0.5 1.5 2; 1 0.5 1')
-# Create a figure and axis for the plot
-
-fig, ax = plt.subplots()
-
-ax.plot([B[0,0],B[0,1]], [B[1,0],B[1,1]], '-ok')
-ax.annotate('b_1', xy=(.35,1))
-ax.plot([B[0,0],B[0,2]], [B[1,0],B[1,2]], '-ok')
-ax.annotate('b_2', xy=(1.55,0.5))
-ax.plot([B[0,1],B[0,2]], [B[1,1],B[1,2]], '-ok')
-ax.annotate('b_3', xy=(2,1.05))
-ax.plot([0,0.5], [0,1], 'r-')
-ax.plot(0.5,1, 'or')
-ax.annotate('b_maximin', xy=(0.5,1.05), color='red')
-ax.set(xlim=(-0,2.5), ylim=(0,1.5))
-ax.spines[['top','right']].set_visible(False)
-ax.plot(0.5,0.5, 'ob')
-ax.annotate('b_DSL', xy=(0.5,0.55), color='blue')
-plt.fill([0.5,1.5,2],[1,0.5,1], color='k', alpha=0.2)
-plt.xticks([0,1,2])
-plt.yticks([0,0.5,1])
-plt.show()
-'''
-
-######## Random comparison DSL, Magging
+from sklearn.linear_model import Lasso
+from sklearn.metrics import mean_squared_error
 
 np.random.seed(seed=0)
 
+# Initialize alphas and ratios for Magging and Data-Shared Lasso
 alphas = np.exp(np.linspace(np.log(0.0001),np.log(5), 75))
 ratios = np.exp(np.linspace(np.log(0.001), np.log(5), 10))
 
@@ -107,21 +51,9 @@ for source in range(n_sources):
     print(y_pred)
     f_hats.append(y_pred)
 
-print('betas: ', betas)
-print()
-print('beta hats: ', beta_hats)
-print()
-print('f_hats: ', f_hats)
-print()
-print(f_hats[0][0])
-print('f_hats as matrix: ', np.matrix([f_hats[0][0], f_hats[1][0], f_hats[2][0]]).T)
-print()
-
+# Solve the quadratic program to obtain magging weights
 f_hats = np.matrix([f_hats[source][0] for source in range(n_sources)]).T
 H = f_hats.T @ f_hats / n_samples
-
-print(np.linalg.eigvals(H))
-
 if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
     print("Warning: Matrix H is not positive definite")
     H += 1e-5
@@ -131,37 +63,35 @@ G = matrix(-np.eye(n_sources))
 h = matrix(np.zeros(n_sources))
 A = matrix(1.0, (1, n_sources))
 b = matrix(1.0)
-
-# Solve the quadratic program to obtain magging weights
 solution = solvers.qp(P, q, G, h, A, b)
 w = np.array(solution['x']).round(4).flatten() # Magging weights
-print(w)
+
+# Plot the convex hull of the true coefficients versus the estimated convex hull
 betas_points = np.vstack([betas[source] for source in range(n_sources)])
 hull_betas = ConvexHull([betas[source] for source in range(n_sources)])
-
 fig, ax = plt.subplots()
-convex_hull_plot_2d(hull_betas, ax)
+convex_hull_plot_2d(hull_betas, ax) # true convex hull
 vertices = np.matrix([betas_points[vertice] for vertice in hull_betas.vertices])
 ax.fill([vertices[i,0] for i in range(len(hull_betas.vertices))], [vertices[i,1] for i in range(len(hull_betas.vertices))], alpha=0.4, label='True')
 beta_hats_points = np.vstack([beta_hats[source] for source in range(n_sources)])
 hull_beta_hats = ConvexHull(beta_hats_points)
-convex_hull_plot_2d(hull_beta_hats, ax)
+convex_hull_plot_2d(hull_beta_hats, ax) # estimated convex hull
 vertices = np.matrix([beta_hats_points[vertice] for vertice in hull_beta_hats.vertices])
 ax.fill([vertices[i,0] for i in range(len(hull_beta_hats.vertices))], [vertices[i,1] for i in range(len(hull_beta_hats.vertices))], alpha=0.4, label='Estimate')
+
+# Add the magging coefficient estimate
 b_magging = np.dot(w,beta_hats_points)
-print(b_magging)
 ax.plot(b_magging[0],b_magging[1], 'or', label = 'Magging Estimator')
 ax.set(xlim=(49,52.5), ylim=(2,6))
 ax.legend()
 
+# Calculate the DSL estimated coefficient for different regularization parameters (alphas) and different degrees of sharing (ratios)
 _dsl_coef = []
 best_dsl_mse = float('inf')
 dsl_best_ratio = 0
 dsl_best_alpha = 0
-
 results = pd.DataFrame(columns=["ratio", "alpha", "mse", "coef0", "coef1", "L1 Norm"], index=range(len(ratios)*len(alphas)))
 idx = 0
-
 for ratio in ratios: 
     diag = ratio*block_diag(X[0*group_size:(0+1)*group_size], X[1*group_size:(1+1)*group_size], X[2*group_size:(2+1)*group_size], X[3*group_size:(3+1)*group_size])
     augmented_X = np.hstack((X, diag))
@@ -174,27 +104,18 @@ for ratio in ratios:
             dsl_best_ratio = ratio
             dsl_best_alpha = alpha
         _dsl_coef.append(model.coef_[:2])
-
         results.iloc[idx] = (ratio, alpha, model_mse, model.coef_[0], model.coef_[1], np.abs(model.coef_[0])+np.abs(model.coef_[1]))
         idx +=1
-
 df = pd.DataFrame(results)
 
-# mask = np.abs(results["ratio"] - 10) <= 1e-6
-# results = results[mask]
-print(df[df['L1 Norm'] <= 1e-6])
-
-print(df[df['ratio']>4])
-# for coef in _dsl_coef:
-#     ax.plot(coef[0], coef[1], 'og', alpha = 0.05)
-
+# Add the different DSL estimates to the plot
+# Estimates with the same degree of sharing should have the same colour
 for idx in range(len(results)):
     r = np.log10(results.iloc[idx]["ratio"])
     color_intensity = max(0, 1 - r/10)  # Ensure color intensity is within [0, 1] range
     ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=(0, color_intensity * (r+3)/5, color_intensity * (2 - r)/10), alpha=0.1)
-    #ax.plot(results.iloc[idx]["coef0"], results.iloc[idx]["coef1"], "o", color=(0, (r+3)/5, (2 - r)/10), alpha=0.1)
 
-# Check DSL when doing r=1/sqrt(G)
+# DSL behavior when following the recommended r=1/sqrt(G)
 diag = (1/np.sqrt(n_sources))*block_diag(X[0*group_size:(0+1)*group_size], X[1*group_size:(1+1)*group_size], X[2*group_size:(2+1)*group_size], X[3*group_size:(3+1)*group_size])
 augmented_X = np.hstack((X, diag))
 for alpha in alphas: 
