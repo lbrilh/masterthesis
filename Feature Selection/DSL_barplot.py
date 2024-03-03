@@ -1,4 +1,4 @@
-'''
+''' TODO: Why alpha max = 10?
     This code plots the 10 most important coefficients (absolute size) of DSL in a barplot.
     Positive coefficients are blue and negative coefficients are red. 
     The penalty term alpha is chosen via cross-validation. 
@@ -17,6 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from tqdm import tqdm
 from sklearn.linear_model import Lasso
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import GridSearchCV
@@ -97,13 +98,15 @@ for column in _Xtrain_augmented.columns:
 
 coefs_rs = {}
 intercept_rs = {}
-for random_state in range(n_states):    
+for random_state in tqdm(range(n_states), desc='Grid Search n_states: '):    
     # Find best penalization parameter
-    parameters = {'alpha': np.linspace(0.001, 10, 100)}
+    parameters = {'alpha': np.linspace(0.001, 10, 20)}
     search = GridSearchCV(Lasso(max_iter=100000, random_state=random_state), parameters, n_jobs=-1)
     search.fit(_Xtrain_augmented, _ytrain)
     coefs_rs[f'random_state {random_state}'] = search.best_estimator_.coef_
-    intercept_rs[f'intercept rs {random_state}'] = search.best_estimator_.intercept_
+    intercept_rs[f'intercept rs {random_state}'] = [search.best_estimator_.intercept_]
+print(coefs_rs)
+print(intercept_rs)
 pd.DataFrame(intercept_rs).to_parquet("dsl_intercepts_random_states.parquet")
 
 # Extract coefficients and plot them 
