@@ -1,4 +1,5 @@
 # TODO change marker color according to group
+# Only the last group combination gets stored! 
 import sys
 import os
 
@@ -152,26 +153,28 @@ mse_comb_datasets = {f'Nr Groups {i}': {} for i in range(1,4)}
 for r in range(1,4):
     mse_comb_datasets[f'Nr Groups {r}'] = {dataset: {} for dataset in ['eicu', 'mimic', 'miiv', 'hirid']}
     _distr_results[f'Nr Groups {r}'] = {dataset: {} for dataset in ['eicu', 'mimic', 'miiv', 'hirid']}
-    for group_combinations in combinations(['eicu', 'mimic', 'miiv', 'hirid'], r):
+    for group_combination in combinations(['eicu', 'mimic', 'miiv', 'hirid'], r):
         n_start = 0
         for i, dataset in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
-            if dataset not in group_combinations: 
+            if dataset not in group_combination: 
                 nrows = n_start + _Xydata[dataset].shape[0]
                 X_dataset = _Xtrain_augmented.iloc[n_start:nrows]
                 y_dataset = _ytrain.iloc[n_start:nrows]
-                mse_comb_datasets[f'Nr Groups {r}'][dataset]['intercept'] = [mean_squared_error(np.repeat(intercept, len(y_dataset)), y_dataset)]
+                mse_comb_datasets[f'Nr Groups {r}'][dataset][group_combination] = {}
+                mse_comb_datasets[f'Nr Groups {r}'][dataset][group_combination]['intercept'] = [mean_squared_error(np.repeat(intercept, len(y_dataset)), y_dataset)]
                 n_start += _Xydata[dataset].shape[0]
                 feature_list = []
-                group_list = list(group_combinations)
+                group_list = list(group_combination)
                 group_list.append('passthrough')
                 for feature in coefs['feature names']:
                     if any(x in feature for x in group_list):
                         feature_list.append(feature)
-                        X_np = (X_dataset[feature_list]).to_numpy()
+                        X_np = (X_dataset[feature_list]).to_numpy() ########### not correct - need to select the data from the groups in group_combination; rn: select from target (i.e mostly 0)
                         coefs_np = coefs.loc[coefs['feature names'].isin(feature_list)]['Avg coefs'].to_numpy()
                         y_pred = intercept + (X_np@coefs_np)
-                        mse_comb_datasets[f'Nr Groups {r}'][dataset][f'{len(feature_list)} feat.'] = [mean_squared_error(y_dataset, y_pred)]
-                _distr_results[f'Nr Groups {r}'][dataset]['features'] = feature_list
+                        mse_comb_datasets[f'Nr Groups {r}'][dataset][group_combination][f'{len(feature_list)} feat.'] = [mean_squared_error(y_dataset, y_pred)]
+                _distr_results[f'Nr Groups {r}'][dataset][group_combination]['features'] = feature_list
     print(_distr_results[f'Nr Groups {r}'])
-print(mse_comb_datasets)
+pd.DataFrame(mse_comb_datasets).to_parquet('mse_robust.parquet')
+print(pd.DataFrame(mse_comb_datasets))
 ##### Store dictionaries; Add plots: train on one/two/three sources and select them individuall (color dots accordingly)
