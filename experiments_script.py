@@ -1,4 +1,4 @@
-'''
+''' TODO: Rerun it once; forgot to shuffle for lgbm refit
     Loads the data and performs either grid search (on train) or fine-tuning (on test) evaluation 
     on the model specified in set_up.py
     Fine-tuning approach: Instead of selecting hyperparameters through the usual method of minimizing 
@@ -89,7 +89,7 @@ if not results_exist(path=f'{model}_results.pkl'):
                     # Use different sample seeds for the fine-tuning set 
                     for sample_seed in sample_seeds:      
                         Xy_target_tuning = _data[source]["test"].sample(
-                        frac=1, random_state=sample_seed
+                        frac=1, random_state=sample_seed # control shuffeling
                         )
                         Xy_target_evaluation = _data[source]['train']
                         for n in n_fine_tuning:
@@ -185,7 +185,9 @@ if not results_exist(path=f'{model}_results.pkl'):
                 for source in sources: 
                     if source != training_source:
                         for sample_seed in sample_seeds:  
-                            Xy_target_tuning = _data[source]["test"]
+                            Xy_target_tuning = _data[source]["test"].sample(
+                            frac=1, random_state=sample_seed
+                            )
                             Xy_target_evaluation = _data[source]['train']
                             for n in n_fine_tuning:
                                 pipeline.fit(Xy_target_tuning[:n],Xy_target_tuning['outcome'][:n])

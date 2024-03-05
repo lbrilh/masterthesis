@@ -1,5 +1,4 @@
 # TODO change marker color according to group
-# Only the last group combination gets stored! 
 import sys
 import os
 
@@ -21,7 +20,6 @@ from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
 outcome = 'hr'
-n_states = 1
 
 data = load_data_for_prediction(outcome=outcome)
 _Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in ['eicu', 'mimic', 'miiv', 'hirid']}
@@ -106,7 +104,7 @@ for feature in coefs['feature names']:
 results = pd.DataFrame(mse)
 pd.DataFrame(mse).to_parquet('robust_stability_selection.parquet')
 
-'''fig, axs = plt.subplots(2,1,figsize=(12,9))
+fig, axs = plt.subplots(2,1,figsize=(12,9))
 ax = axs[0]
 ax.set_ylabel('Mean-Squared Error')
 ax.set_xlabel('Number of features')
@@ -147,24 +145,26 @@ for i, dataset in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
 fig2.suptitle(f"Individual", fontweight='bold', fontsize=15)
 plt.tight_layout()
 plt.show()
-'''
+
 _distr_results = {f'Nr Groups {i}': {} for i in range(1,4)}
 mse_comb_datasets = {f'Nr Groups {i}': {} for i in range(1,4)}
 for r in range(1,4):
     mse_comb_datasets[f'Nr Groups {r}'] = {dataset: {} for dataset in ['eicu', 'mimic', 'miiv', 'hirid']}
     _distr_results[f'Nr Groups {r}'] = {dataset: {} for dataset in ['eicu', 'mimic', 'miiv', 'hirid']}
     for group_combination in combinations(['eicu', 'mimic', 'miiv', 'hirid'], r):
+        group_list = list(group_combination)
+        group_comb_name = ", ".join(group_list)
         n_start = 0
         for i, dataset in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
             if dataset not in group_combination: 
                 nrows = n_start + _Xydata[dataset].shape[0]
                 X_dataset = _Xtrain_augmented.iloc[n_start:nrows]
                 y_dataset = _ytrain.iloc[n_start:nrows]
-                mse_comb_datasets[f'Nr Groups {r}'][dataset][group_combination] = {}
-                mse_comb_datasets[f'Nr Groups {r}'][dataset][group_combination]['intercept'] = [mean_squared_error(np.repeat(intercept, len(y_dataset)), y_dataset)]
+                mse_comb_datasets[f'Nr Groups {r}'][dataset][group_comb_name] = {}
+                _distr_results[f'Nr Groups {r}'][dataset][group_comb_name] = {}
+                mse_comb_datasets[f'Nr Groups {r}'][dataset][group_comb_name]['intercept'] = [mean_squared_error(np.repeat(intercept, len(y_dataset)), y_dataset)]
                 n_start += _Xydata[dataset].shape[0]
                 feature_list = []
-                group_list = list(group_combination)
                 group_list.append('passthrough')
                 for feature in coefs['feature names']:
                     if any(x in feature for x in group_list):
@@ -172,9 +172,9 @@ for r in range(1,4):
                         X_np = (X_dataset[feature_list]).to_numpy() ########### not correct - need to select the data from the groups in group_combination; rn: select from target (i.e mostly 0)
                         coefs_np = coefs.loc[coefs['feature names'].isin(feature_list)]['Avg coefs'].to_numpy()
                         y_pred = intercept + (X_np@coefs_np)
-                        mse_comb_datasets[f'Nr Groups {r}'][dataset][group_combination][f'{len(feature_list)} feat.'] = [mean_squared_error(y_dataset, y_pred)]
-                _distr_results[f'Nr Groups {r}'][dataset][group_combination]['features'] = feature_list
+                        mse_comb_datasets[f'Nr Groups {r}'][dataset][group_comb_name][f'{len(feature_list)} feat.'] = [mean_squared_error(y_dataset, y_pred)]
+                _distr_results[f'Nr Groups {r}'][dataset][group_comb_name]['features'] = feature_list
     print(_distr_results[f'Nr Groups {r}'])
-pd.DataFrame(mse_comb_datasets).to_parquet('mse_robust.parquet')
 print(pd.DataFrame(mse_comb_datasets))
-##### Store dictionaries; Add plots: train on one/two/three sources and select them individuall (color dots accordingly)
+pd.DataFrame(mse_comb_datasets).to_parquet('mse_robust.parquet')
+pd.DataFrame(_distr_results).to_parquet('dsl_feature_list.parquet')
