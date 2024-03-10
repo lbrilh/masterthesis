@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from itertools import combinations
-from sklearn.linear_model import Lasso
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
@@ -102,7 +101,7 @@ for feature in coefs['feature names']:
     num_feat += 1
 
 results = pd.DataFrame(mse)
-pd.DataFrame(mse).to_parquet('robust_stability_selection.parquet')
+#pd.DataFrame(mse).to_parquet('robust_stability_selection.parquet')
 
 fig, axs = plt.subplots(2,1,figsize=(12,9))
 ax = axs[0]
@@ -116,6 +115,7 @@ gx.set_ylabel('Mean-Squared Error')
 gx.set_xlabel('Number of features')
 gx.plot(range(0,50), results.to_numpy().reshape(-1)[:50], 'bo-', ms=5, alpha=0.5)
 gx.grid(True)
+fig.suptitle('MSE on trainings data')
 plt.tight_layout()
 
 fig2, axs2 = plt.subplots(2,2,figsize=(12,9))
@@ -142,10 +142,39 @@ for i, dataset in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     fx.set_xlabel('Number of features')
     fx.grid(visible=True)
     fx.plot(range(0, len(feature_list)+1), pd.DataFrame(mse_datasets[dataset]).to_numpy().reshape((len(feature_list)+1,1)), 'bo-', alpha=0.5, ms=3)
-fig2.suptitle(f"Individual", fontweight='bold', fontsize=15)
+fig2.suptitle(f"common + target individual", fontweight='bold', fontsize=15)
+plt.tight_layout()
+
+fig3, axs3 = plt.subplots(2,2,figsize=(12,9))
+mse_datasets = {source: {} for source in ['eicu', 'mimic', 'miiv', 'hirid']}
+n_start = 0
+for i, dataset in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
+    row, col = divmod(i, 2)
+    hx = axs3[row, col]
+    nrows = n_start + _Xydata[dataset].shape[0]
+    X_dataset = _Xtrain_augmented.iloc[n_start:nrows]
+    y_dataset = _ytrain.iloc[n_start:nrows]
+    mse_datasets[dataset]['intercept'] = [mean_squared_error(np.repeat(intercept, len(y_dataset)), y_dataset)]
+    n_start += _Xydata[dataset].shape[0]
+    feature_list = []
+    for feature in coefs['feature names']:
+        if 'passthrough' in feature:
+            feature_list.append(feature)
+            X_np = (X_dataset[feature_list]).to_numpy()
+            coefs_np = coefs.loc[coefs['feature names'].isin(feature_list)]['Avg coefs'].to_numpy()
+            y_pred = intercept + (X_np@coefs_np)
+            mse_datasets[dataset][f'{len(feature_list)} feat.'] = [mean_squared_error(y_dataset, y_pred)]
+    hx.set_title(dataset)
+    hx.set_ylabel('Mean-Squared Error')
+    hx.set_xlabel('Number of features')
+    hx.grid(visible=True)
+    hx.plot(range(0, len(feature_list)+1), pd.DataFrame(mse_datasets[dataset]).to_numpy().reshape((len(feature_list)+1,1)), 'bo-', alpha=0.5, ms=3)
+fig3.suptitle(f"Only common features", fontweight='bold', fontsize=15)
 plt.tight_layout()
 plt.show()
 
+
+# Irrelevant
 _distr_results = {f'Nr Groups {i}': {} for i in range(1,4)}
 mse_comb_datasets = {f'Nr Groups {i}': {} for i in range(1,4)}
 for r in range(1,4):
@@ -176,5 +205,5 @@ for r in range(1,4):
                 _distr_results[f'Nr Groups {r}'][dataset][group_comb_name]['features'] = feature_list
     print(_distr_results[f'Nr Groups {r}'])
 print(pd.DataFrame(mse_comb_datasets))
-pd.DataFrame(mse_comb_datasets).to_parquet('mse_robust.parquet')
-pd.DataFrame(_distr_results).to_parquet('dsl_feature_list.parquet')
+#pd.DataFrame(mse_comb_datasets).to_parquet('mse_robust.parquet')
+#pd.DataFrame(_distr_results).to_parquet('dsl_feature_list.parquet')

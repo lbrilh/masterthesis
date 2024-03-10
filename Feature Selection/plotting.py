@@ -24,9 +24,9 @@ for r in range(1,4):
             colors += ['k' if 'passthrough' in combination_feature_names.iloc[i].values[0]
                        else 'r' for i in range(combination_feature_names.shape[0])]
             results = [float(arr[0]) for arr in target_df[combination][ordered_columns].to_numpy()]
-            ax.plot(range(0, 1 + 51*(1+r)), results, '-', label=combination)
+            ax.plot(range(0, 1 + 51*(1+r)), results, '-', label=combination, alpha=0.5)
             ax.legend()
-            ax.scatter(range(0, 1 + 51*(1+r)), results, c=colors, alpha=0.7)
+            #ax.scatter(range(0, 1 + 51*(1+r)), results, c=colors, alpha=0.7)
             ax.set_title(f'target: {target}')
             ax.grid(True)
         if r == 1:
