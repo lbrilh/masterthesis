@@ -100,7 +100,7 @@ for r in range(2,4):
                 forward_coef[f'test mse {dataset}'] = []
 
         for i in range(51):
-            lm = Lasso(fit_intercept=False)
+            model = Lasso(fit_intercept=False, alpha=0.001)
             if i != 0:
                 X = _Xtrain_augmented.drop(columns=forward_coef['name'])
             else: 
@@ -115,15 +115,16 @@ for r in range(2,4):
                         selected_columns.append(feature)
                     else:
                         selected_columns = [feature]
-                    lm.fit(_Xtrain_augmented[selected_columns], _ytrain)
+                    model.fit(_Xtrain_augmented[selected_columns], _ytrain)
+                    #print(model.coef_)
                     name.append(feature)
-                    train_mse.append(mean_squared_error(_ytrain, lm.predict(_Xtrain_augmented[selected_columns])))
+                    train_mse.append(mean_squared_error(_ytrain, model.predict(_Xtrain_augmented[selected_columns])))
                     for dataset in datasets:
                         if dataset not in group_combination:
                             Xtest = preprocessor.fit_transform(_Xydata[dataset])
                             columns = Xtest.columns
                             Xtest.rename(columns={col: f'passthrough_features__{col}' for col in columns}, inplace=True)
-                            test_mse[dataset].append(mean_squared_error(_Xydata[dataset]['outcome'] - intercept, lm.predict(Xtest[selected_columns])))
+                            test_mse[dataset].append(mean_squared_error(_Xydata[dataset]['outcome'] - intercept, model.predict(Xtest[selected_columns])))
             results_step_df = pd.DataFrame({'name': name, 'train mse': train_mse})
             for dataset in datasets:
                 if dataset not in group_combination:
