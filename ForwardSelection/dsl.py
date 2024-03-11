@@ -137,7 +137,7 @@ for r in range(2,4):
                 if dataset not in group_combination: 
                     best_feature_test_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])[f'test mse {dataset}'].iloc[0]
                     forward_coef[f'test mse {dataset}'].append(best_feature_test_mse)
-        pd.DataFrame(forward_coef).to_parquet(f'dsl_results/train_on_{group_combination}_forward_selection_results.parquet')
+        pd.DataFrame(forward_coef).to_parquet(f'dsl_results/alpha_small_train_on_{group_combination}_forward_selection_results.parquet')
         print(group_combination)
         print(pd.DataFrame(forward_coef))
         print()

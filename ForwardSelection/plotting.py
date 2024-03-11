@@ -36,7 +36,7 @@ fig.suptitle('OLS Baseline')
 plt.tight_layout()
 
 for r in range(2,4):
-    dsl_paths = [f'train_on_{group_combination}_forward_selection_results.parquet' for group_combination in combinations(datasets, r)]
+    dsl_paths = [f'alpha_small_train_on_{group_combination}_forward_selection_results.parquet' for group_combination in combinations(datasets, r)]
     if r == 2:
         fig, axs = plt.subplots(2,3,figsize=(12,9))
     if r == 3:
@@ -72,6 +72,4 @@ for r in range(2,4):
         i += 1
     fig.suptitle('DSL')
     plt.tight_layout()
-
-
 plt.show()
