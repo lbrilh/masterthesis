@@ -28,6 +28,7 @@ preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
     ).set_output(transform="pandas")
 
+alphas = np.linspace(0.001, 2, 10)
 
 for r in range(2,4):
     for group_combination in combinations(datasets, r):
@@ -90,54 +91,56 @@ for r in range(2,4):
                     _Xtrain_augmented[column] = 1/np.sqrt(r_g['miiv'])*_Xtrain_augmented[column]
                 elif 'hirid' in column: 
                     _Xtrain_augmented[column] = 1/np.sqrt(r_g['hirid'])*_Xtrain_augmented[column]
+        
+        forward_coef = {'alpha': [], 'name': [], 'train mse': []}
+        for alpha in alphas: 
+            included_features = []
+            features = _Xtrain_augmented.columns
 
-        included_features = []
-        features = _Xtrain_augmented.columns
-
-        forward_coef = {'name': [], 'train mse': []}
-        for dataset in datasets:
-            if dataset not in group_combination: 
-                forward_coef[f'test mse {dataset}'] = []
-
-        for i in range(51):
-            model = Lasso(fit_intercept=False, alpha=0.001)
-            if i != 0:
-                X = _Xtrain_augmented.drop(columns=forward_coef['name'])
-            else: 
-                X = _Xtrain_augmented
-            name = []
-            train_mse = []
-            test_mse = {dataset:[] for dataset in datasets if dataset not in group_combination}
-            for feature in X.columns:
-                if 'passthrough' in feature: 
-                    if i != 0:
-                        selected_columns = forward_coef['name'].copy()
-                        selected_columns.append(feature)
-                    else:
-                        selected_columns = [feature]
-                    model.fit(_Xtrain_augmented[selected_columns], _ytrain)
-                    #print(model.coef_)
-                    name.append(feature)
-                    train_mse.append(mean_squared_error(_ytrain, model.predict(_Xtrain_augmented[selected_columns])))
-                    for dataset in datasets:
-                        if dataset not in group_combination:
-                            Xtest = preprocessor.fit_transform(_Xydata[dataset])
-                            columns = Xtest.columns
-                            Xtest.rename(columns={col: f'passthrough_features__{col}' for col in columns}, inplace=True)
-                            test_mse[dataset].append(mean_squared_error(_Xydata[dataset]['outcome'] - intercept, model.predict(Xtest[selected_columns])))
-            results_step_df = pd.DataFrame({'name': name, 'train mse': train_mse})
-            for dataset in datasets:
-                if dataset not in group_combination:
-                    results_step_df[f'test mse {dataset}'] = test_mse[dataset]
-            best_feature_name = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])['name'].iloc[0]
-            best_feature_train_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])['train mse'].iloc[0]
-            forward_coef['name'].append(best_feature_name)
-            forward_coef['train mse'].append(best_feature_train_mse)
             for dataset in datasets:
                 if dataset not in group_combination: 
-                    best_feature_test_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])[f'test mse {dataset}'].iloc[0]
-                    forward_coef[f'test mse {dataset}'].append(best_feature_test_mse)
-        pd.DataFrame(forward_coef).to_parquet(f'dsl_results/alpha_small_train_on_{group_combination}_forward_selection_results.parquet')
+                    forward_coef[f'test mse {dataset}'] = []
+            
+            for i in range(51):
+                model = Lasso(fit_intercept=False, alpha=alpha)
+                if i != 0:
+                    X = _Xtrain_augmented.drop(columns=forward_coef['name'])
+                else: 
+                    X = _Xtrain_augmented
+                name = []
+                train_mse = []
+                test_mse = {dataset:[] for dataset in datasets if dataset not in group_combination}
+                for feature in X.columns:
+                    if 'passthrough' in feature: 
+                        if i != 0:
+                            selected_columns = forward_coef['name'].copy()
+                            selected_columns.append(feature)
+                        else:
+                            selected_columns = [feature]
+                        model.fit(_Xtrain_augmented[selected_columns], _ytrain)
+                        #print(model.coef_)
+                        name.append(feature)
+                        train_mse.append(mean_squared_error(_ytrain, model.predict(_Xtrain_augmented[selected_columns])))
+                        for dataset in datasets:
+                            if dataset not in group_combination:
+                                Xtest = preprocessor.fit_transform(_Xydata[dataset])
+                                columns = Xtest.columns
+                                Xtest.rename(columns={col: f'passthrough_features__{col}' for col in columns}, inplace=True)
+                                test_mse[dataset].append(mean_squared_error(_Xydata[dataset]['outcome'] - intercept, model.predict(Xtest[selected_columns])))
+                results_step_df = pd.DataFrame({'name': name, 'train mse': train_mse})
+                for dataset in datasets:
+                    if dataset not in group_combination:
+                        results_step_df[f'test mse {dataset}'] = test_mse[dataset]
+                best_feature_name = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])['name'].iloc[0]
+                best_feature_train_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])['train mse'].iloc[0]
+                forward_coef['name'].append(best_feature_name)
+                forward_coef['train mse'].append(best_feature_train_mse)
+                forward_coef['alpha'].append(alpha)
+                for dataset in datasets:
+                    if dataset not in group_combination: 
+                        best_feature_test_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])[f'test mse {dataset}'].iloc[0]
+                        forward_coef[f'test mse {dataset}'].append(best_feature_test_mse)
+        pd.DataFrame(forward_coef).to_parquet(f'dsl_results/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
         print(group_combination)
         print(pd.DataFrame(forward_coef))
         print()
