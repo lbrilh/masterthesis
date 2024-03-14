@@ -66,7 +66,7 @@ for r in range(2,4):
                 splitted_col = col.split(' ')
                 if 'name' not in col:
                     if 'train' in col:
-                        ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'ko-', ms=2)
+                        ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'ko-', ms=2, alpha=0.3)
                     if 'test' in col:
                         if 'eicu' in col: 
                             ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'bo-', ms=2)
