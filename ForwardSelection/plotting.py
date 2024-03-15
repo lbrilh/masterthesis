@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from matplotlib.cm import ScalarMappable
 from itertools import combinations
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
@@ -46,6 +46,101 @@ for r in range(2,4):
     fig.suptitle('Lasso Baseline')
 plt.tight_layout()
 
+for r in range(2, 4):
+    if r == 2:
+        fig, axs = plt.subplots(2, 3, figsize=(12, 9))
+    if r == 3:
+        fig, axs = plt.subplots(2, 2, figsize=(12, 9))
+    i = 0
+    for group_combination in combinations(datasets, r):
+        if r == 2:
+            row = i % 2
+            col = i % 3
+        if r == 3:
+            row, col = divmod(i, 2)
+        ax = axs[row, col]
+        data = pd.read_parquet(
+            f'dsl_results/multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
+        alphas = data['alpha'].unique()
+        colors = {'eicu': 'blue', 'mimic': 'red', 'miiv': 'magenta', 'hirid': 'cyan'}
+        norm = plt.Normalize(vmin=min(alphas), vmax=max(alphas))
+        cmap = plt.get_cmap('viridis')
+        scalar_map = ScalarMappable(norm=norm, cmap=cmap)
+        for alpha in alphas:
+            for col in data.columns:
+                splitted_col = col.split(' ')
+                dataset_name = None
+                for dataset in datasets:
+                    if dataset in splitted_col:
+                        dataset_name = dataset
+                        break
+                if dataset_name:
+                    if 'name' not in col:
+                        # if 'train' in col:
+                        #     color = scalar_map.to_rgba(alpha)
+                        #     ax.plot(range(0, 51), data[data['alpha'] == alpha][col].iloc[0],
+                        #             color=color, alpha=1, marker='o', linestyle='-',
+                        #             ms=2, label='train')
+                        if 'test' in col:
+                            color = scalar_map.to_rgba(alpha)
+                            ax.plot(range(0, 51), data[data['alpha'] == alpha][col].iloc[0],
+                                    color=color, alpha=0.8, marker='o', linestyle='-',
+                                    ms=2, label='test')
+        ax.grid()
+        ax.set_xlabel('Number of features')
+        ax.set_title(f'Trained on {group_combination}')
+        i += 1
+    fig.suptitle('DSL')
+    plt.tight_layout()
+    plt.colorbar(scalar_map, ax=axs, orientation='vertical', label='Alpha')
+
+
+colors = {'eicu': 'blue', 'mimic': 'red', 'miiv': 'magenta', 'hirid': 'cyan'}
+
+# Create figures
+for r in range(2, 4):
+    if r == 2:
+        fig, axs = plt.subplots(2,3,figsize=(12,9))
+        fig.subplots_adjust(right=0.8)
+    if r == 3:
+        fig, axs = plt.subplots(2,2,figsize=(12,9))
+        fig.subplots_adjust(right=0.75)
+    i = 0
+    for group_combination in combinations(datasets, r):
+        if r == 2:
+            row = i%2
+            col = i%3
+        if r == 3:
+            row, col = divmod(i,2)
+        ax = axs[row, col]
+        data = pd.read_parquet(f'dsl_results/multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
+        alphas = data['alpha'].unique()
+        for alpha in alphas:
+            for col in data.columns:
+                splitted_col = col.split(' ')
+                if 'name' not in col:
+                    # if 'train' in col: # ctrl + /
+                    #     ax.plot(range(0, 51), data[data['alpha']==alpha][col].iloc[0], 'ko-', ms=2, alpha=0.3)
+                    if 'test' in col:
+                        for dataset_name, color in colors.items():
+                            if dataset_name in col:
+                                ax.plot(range(0, 51), data[data['alpha']==alpha][col].iloc[0], color=color, marker='o', linestyle='-', ms=2, alpha=0.8)
+        ax.grid()
+        ax.set_xlabel('Number of features')
+        ax.set_title(f'Trained on {group_combination}')
+        i += 1
+    
+    # Create a color legend subplot
+    ax_legend = fig.add_subplot(1, 1, 1, frameon=False)
+    ax_legend.axis('off')
+    for dataset_name, color in colors.items():
+        ax_legend.plot([], [], color=color, label=dataset_name)
+    ax_legend.legend(title='Color Legend', loc='center left', bbox_to_anchor=(1.05, 0.5))
+
+    fig.suptitle('DSL')
+    plt.tight_layout(rect=[0, 0, 0.95, 1])
+plt.show()
+''' Past code
 for r in range(2,4):
     if r == 2:
         fig, axs = plt.subplots(2,3,figsize=(12,9))
@@ -82,4 +177,4 @@ for r in range(2,4):
         i += 1
     fig.suptitle('DSL')
     plt.tight_layout()
-plt.show()
+plt.show()'''
