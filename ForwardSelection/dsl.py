@@ -1,3 +1,7 @@
+'''
+    This script performs forward selection and modeling using Data Shared Lasso on combinations of healthcare datasets using various regularisation strengths. 
+'''
+
 import sys
 import os
 
@@ -20,26 +24,27 @@ outcome = 'hr'
 method = 'lasso'
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
-data = load_data_for_prediction(outcome=outcome)
+data = load_data_for_prediction(outcome=outcome) # load datasets with specified outcome
 _Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in datasets}
 
-# Preprocessing of individual groups
+# Initialize preprocessing of individual groups
 preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
     ).set_output(transform="pandas")
 
-alphas = np.linspace(0.001, 2, 10)
+alphas = np.linspace(0.001, 2, 10) # different regularisation strengths used for DSL
 
+# For each r-combination of datasets, pefrom forward selection
 for r in range(2,4):
     for group_combination in combinations(datasets, r):
         _Xytrain = pd.concat([_Xydata[source] for source in group_combination], ignore_index=True)
         _Xtrain = pd.concat([preprocessor.fit_transform(_Xydata[source]) for source in group_combination], ignore_index=True)
         _Xtrain.fillna(0, inplace=True)
         _ytrain = _Xytrain['outcome']
-        intercept = _ytrain.mean()
+        intercept = _ytrain.mean() # All models include per default mean as intercept
         _ytrain = _ytrain - intercept
 
-        # Start generating the augmented dataset
+        # Function to generating the augmented dataset
         interactions = ColumnTransformer(
             transformers = 
             [
@@ -92,17 +97,15 @@ for r in range(2,4):
                 elif 'hirid' in column: 
                     _Xtrain_augmented[column] = 1/np.sqrt(r_g['hirid'])*_Xtrain_augmented[column]
         
+        # Forward selection for each alpha value
         forward_coef = []
         for alpha in alphas: 
             alpha_data = {'alpha': alpha, 'name': [], 'train mse': []}
-            features = _Xtrain_augmented.columns
-
             for dataset in datasets:
                 if dataset not in group_combination: 
                     alpha_data[f'test mse {dataset}'] = []
-            
             for i in range(51):
-                model = Lasso(fit_intercept=False, alpha=alpha)
+                model = Lasso(fit_intercept=False, alpha=alpha) # Intercept has already been deducted
                 X = _Xtrain_augmented.copy()
                 if i != 0:
                     X.drop(columns=alpha_data['name'], inplace=True)
@@ -110,7 +113,7 @@ for r in range(2,4):
                 train_mse = []
                 test_mse = {dataset:[] for dataset in datasets if dataset not in group_combination}
                 for feature in X.columns:
-                    if 'passthrough' in feature: 
+                    if 'passthrough' in feature: # Only include the shared/common features
                         if i != 0:
                             selected_columns = alpha_data['name'].copy()
                             selected_columns.append(feature)
@@ -119,6 +122,7 @@ for r in range(2,4):
                         model.fit(_Xtrain_augmented[selected_columns], _ytrain)
                         name.append(feature)
                         train_mse.append(mean_squared_error(_ytrain, model.predict(_Xtrain_augmented[selected_columns])))
+                        # Use current model and predict on test data
                         for dataset in datasets:
                             if dataset not in group_combination:
                                 Xtest = preprocessor.fit_transform(_Xydata[dataset])
@@ -129,6 +133,7 @@ for r in range(2,4):
                 for dataset in datasets:
                     if dataset not in group_combination:
                         results_step_df[f'test mse {dataset}'] = test_mse[dataset]
+                # Select most significant feature
                 best_feature_name = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])['name'].iloc[0]
                 best_feature_train_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])['train mse'].iloc[0]
                 alpha_data['name'].append(best_feature_name)
@@ -138,7 +143,5 @@ for r in range(2,4):
                         best_feature_test_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])[f'test mse {dataset}'].iloc[0]
                         alpha_data[f'test mse {dataset}'].append(best_feature_test_mse)
             forward_coef.append(alpha_data)
+        # Save results
         pd.DataFrame(forward_coef).to_parquet(f'dsl_results/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
-        print(group_combination)
-        print(pd.DataFrame(forward_coef))
-        print()

@@ -1,3 +1,10 @@
+'''
+    This script visualizes the performance of Lasso and DSL (Data Shared Lasso) models trained on combinations of
+    four different healthcare datasets (`eicu`, `mimic`, `miiv`, `hirid`). It creates plots to compare the models based on
+    the number of features selected through forward selection and their performance metrics. The script is structured into
+    three main blocks, each targeting a specific aspect of the visualization.
+'''
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
@@ -5,11 +12,10 @@ from itertools import combinations
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 
+# This block generates plots for the Lasso baseline model's performance metrics, such as train and test scores, 
+# for each combination of 2 and 3 datasets.
 baseline_alphas = pd.read_parquet('baseline_results/Lasso/group_alphas_forward_selection.parquet')
-
-for r in range(2,4):
-    #baseline_paths = [f'lasso_train_on_{group_combination}_forward_selection_results.parquet' for group_combination in group_combs]
-    
+for r in range(2,4):    
     if r == 2:
         fig, axs = plt.subplots(2,3,figsize=(12,9))
     if r == 3:
@@ -46,6 +52,8 @@ for r in range(2,4):
     fig.suptitle('Lasso Baseline')
 plt.tight_layout()
 
+# This block visualizes the DSL model's performance for each combination of 2 and 3 datasets, considering multiple alpha values.
+# It highlights how the performance varies with different regularization strengths by mapping alpha values to a color gradient.
 for r in range(2, 4):
     if r == 2:
         fig, axs = plt.subplots(2, 3, figsize=(12, 9))
@@ -94,10 +102,8 @@ for r in range(2, 4):
     plt.tight_layout()
     plt.colorbar(scalar_map, ax=axs, orientation='vertical', label='Alpha')
 
-
+# Adds a dedicated color legend for better dataset distinction in DSL model performance visualization.
 colors = {'eicu': 'blue', 'mimic': 'red', 'miiv': 'magenta', 'hirid': 'cyan'}
-
-# Create figures
 for r in range(2, 4):
     if r == 2:
         fig, axs = plt.subplots(2,3,figsize=(12,9))
@@ -129,7 +135,6 @@ for r in range(2, 4):
         ax.set_xlabel('Number of features')
         ax.set_title(f'Trained on {group_combination}')
         i += 1
-    
     # Create a color legend subplot
     ax_legend = fig.add_subplot(1, 1, 1, frameon=False)
     ax_legend.axis('off')
@@ -140,41 +145,3 @@ for r in range(2, 4):
     fig.suptitle('DSL')
     plt.tight_layout(rect=[0, 0, 0.95, 1])
 plt.show()
-''' Past code
-for r in range(2,4):
-    if r == 2:
-        fig, axs = plt.subplots(2,3,figsize=(12,9))
-    if r == 3:
-        fig, axs = plt.subplots(2,2,figsize=(12,9))
-    i = 0
-    for group_combination in combinations(datasets,r):
-        if r == 2:
-            row = i%2
-            col = i%3
-        if r == 3:
-            row, col = divmod(i,2)
-        ax = axs[row,col]
-        data = pd.read_parquet(f'dsl_results/multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
-        alphas = data['alpha'].unique()
-        for alpha in alphas: 
-            for col in data.columns:
-                splitted_col = col.split(' ')
-                if 'name' not in col:
-                    if 'train' in col:
-                        ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'ko-', ms=2, alpha=0.3)
-                    if 'test' in col:
-                        if 'eicu' in col: 
-                            ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'bo-', ms=2)
-                        if 'mimic' in col: 
-                            ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'ro-', ms=2)
-                        if 'miiv' in col: 
-                            ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'mo-', ms=2)
-                        if 'hirid' in col: 
-                            ax.plot(range(0,51), data[data['alpha']==alpha][col].iloc[0], 'co-', ms=2)
-        ax.grid()
-        ax.set_xlabel('Number of features')
-        ax.set_title(f'Trained on {group_combination}')
-        i += 1
-    fig.suptitle('DSL')
-    plt.tight_layout()
-plt.show()'''
