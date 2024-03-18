@@ -10,11 +10,12 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from itertools import combinations
 
+outcome = 'map'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 
 # This block generates plots for the Lasso baseline model's performance metrics, such as train and test scores, 
 # for each combination of 2 and 3 datasets.
-baseline_alphas = pd.read_parquet('baseline_results/Lasso/group_alphas_forward_selection.parquet')
+baseline_alphas = pd.read_parquet(f'baseline_results/lasso/{outcome}/{outcome}_group_alphas_forward_selection.parquet')
 for r in range(2,4):    
     if r == 2:
         fig, axs = plt.subplots(2,3,figsize=(12,9))
@@ -29,7 +30,7 @@ for r in range(2,4):
         if r == 3:
             row, col = divmod(i,2)
         ax = axs[row,col]
-        data = pd.read_parquet(f'baseline_results/Lasso/lasso_train_on_{group_combination}_forward_selection_results.parquet')
+        data = pd.read_parquet(f'baseline_results/lasso/{outcome}/{outcome}_lasso_train_on_{group_combination}_forward_selection_results.parquet')
         for col in data.columns:
             splitted_col = col.split(' ')
             if 'name' not in col:
@@ -68,7 +69,7 @@ for r in range(2, 4):
             row, col = divmod(i, 2)
         ax = axs[row, col]
         data = pd.read_parquet(
-            f'dsl_results/multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
+            f'dsl_results/{outcome}/{outcome}_multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
         alphas = data['alpha'].unique()
         colors = {'eicu': 'blue', 'mimic': 'red', 'miiv': 'magenta', 'hirid': 'cyan'}
         norm = plt.Normalize(vmin=min(alphas), vmax=max(alphas))

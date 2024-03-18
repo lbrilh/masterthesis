@@ -2,6 +2,7 @@
     Performs forward feature selection using Lasso regression on all combinations of two and three datasets. 
     The penalization parameter is determined through 5-fold cross-validation on the training dataset. 
     The results are saved to 'baseline_results/group_alphas_forward_selection.parquet'.
+    'source' must be excluded in constants.py before running this script.
 '''
 
 import sys
@@ -22,7 +23,7 @@ from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 from preprocessing import make_feature_preprocessing
 
-outcome = 'hr'
+outcome = 'map'
 method = 'lasso'
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
@@ -47,7 +48,7 @@ for r in range(2,4):
         intercept = ytrain.mean()
         ytrain = ytrain - intercept # All models include mean as intercept per default
 
-        search = GridSearchCV(Lasso(fit_intercept=False), param_grid={'alpha': np.linspace(0.001, 2, 10)})
+        search = GridSearchCV(Lasso(fit_intercept=False, max_iter=10000000), param_grid={'alpha': np.linspace(0.001, 2, 10)})
         search.fit(Xtrain, ytrain)
         alpha = search.best_params_['alpha']
         selected_alphas['group name'].append(group_combination)
@@ -95,8 +96,8 @@ for r in range(2,4):
                     best_feature_test_mse = (results_step_df[results_step_df['train mse'] == results_step_df['train mse'].min()])[f'test mse {dataset}'].iloc[0]
                     forward_coef[f'test mse {dataset}'].append(best_feature_test_mse)
         # Store results for current group_combination
-        pd.DataFrame(forward_coef).to_parquet(f'baseline_results/lasso_train_on_{group_combination}_forward_selection_results.parquet')
+        pd.DataFrame(forward_coef).to_parquet(f'baseline_results/{method}/{outcome}/{outcome}_lasso_train_on_{group_combination}_forward_selection_results.parquet')
 
 
 df = pd.DataFrame(selected_alphas)
-df.to_parquet('baseline_results/group_alphas_forward_selection.parquet')
+df.to_parquet(f'baseline_results/{method}/{outcome}/{outcome}_group_alphas_forward_selection.parquet')

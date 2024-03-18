@@ -1,5 +1,6 @@
 '''
-    This script performs forward selection and modeling using Data Shared Lasso on combinations of healthcare datasets using various regularisation strengths. 
+    This script performs forward selection and modeling using Data Shared Lasso on combinations of healthcare datasets using various regularisation strengths.
+    'source' must be included in constants.py before running this script.
 '''
 
 import sys
@@ -20,7 +21,7 @@ from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 from preprocessing import make_feature_preprocessing
 
-outcome = 'hr'
+outcome = 'map'
 method = 'lasso'
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
@@ -105,7 +106,7 @@ for r in range(2,4):
                 if dataset not in group_combination: 
                     alpha_data[f'test mse {dataset}'] = []
             for i in range(51):
-                model = Lasso(fit_intercept=False, alpha=alpha) # Intercept has already been deducted
+                model = Lasso(fit_intercept=False, alpha=alpha, max_iter=10000000) # Intercept has already been deducted
                 X = _Xtrain_augmented.copy()
                 if i != 0:
                     X.drop(columns=alpha_data['name'], inplace=True)
@@ -144,4 +145,4 @@ for r in range(2,4):
                         alpha_data[f'test mse {dataset}'].append(best_feature_test_mse)
             forward_coef.append(alpha_data)
         # Save results
-        pd.DataFrame(forward_coef).to_parquet(f'dsl_results/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
+        pd.DataFrame(forward_coef).to_parquet(f'dsl_results/multiple alpha/{outcome}/{outcome}_multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
