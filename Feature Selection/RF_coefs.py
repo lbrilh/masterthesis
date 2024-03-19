@@ -53,8 +53,10 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     feature_importances = feature_importances.iloc[:10]
     ax.set_title(source)
     sns.barplot(x=feature_importances['Importance'], y=feature_importances['Feature Names'], orient='h', ax=ax, alpha=0.7)
+    ax.set_ylabel("")
 plt.tight_layout()
 plt.savefig('images/barplots/RF_individual_feature_importances.png')
+plt.show()
 
 model = LGBMRegressor(boosting_type='rf', feature_fraction=0.8)
 model.fit(X_all, y_all)
@@ -69,6 +71,7 @@ feature_importances = pd.DataFrame({'Importance': model.feature_importances_,
 feature_importances.sort_values(by='Importance', ascending=False, inplace=True)
 feature_importances = feature_importances.iloc[:10]
 sns.barplot(x=feature_importances['Importance'], y=feature_importances['Feature Names'], orient='h', alpha=0.7)
+plt.ylabel("")
 plt.tight_layout()
 plt.savefig('images/barplots/RF_all_feature_importances.png')
 plt.show()
