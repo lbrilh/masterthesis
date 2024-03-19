@@ -1,3 +1,9 @@
+'''
+    The numerical and categorical features used in our models. 
+    When performing DSL: Include 'source' in categorical_columns
+    Else: Exclude
+'''
+
 NUMERICAL_COLUMNS = [
     "age",
     "alb",
@@ -49,7 +55,7 @@ NUMERICAL_COLUMNS = [
     "wbc",
     "weight",
 ]
-CATEGORICAL_COLUMNS = ['sex', 'source']
+CATEGORICAL_COLUMNS = ['sex'] #, 'source']
 ANCHOR_COLUMNS = ["source"]  # , "source"]
 
 LOG_COLUMNS = [

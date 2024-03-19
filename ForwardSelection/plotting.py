@@ -69,7 +69,7 @@ for r in range(2, 4):
             row, col = divmod(i, 2)
         ax = axs[row, col]
         data = pd.read_parquet(
-            f'dsl_results/{outcome}/{outcome}_multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
+            f'dsl_results/multiple alpha/{outcome}/{outcome}_multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
         alphas = data['alpha'].unique()
         colors = {'eicu': 'blue', 'mimic': 'red', 'miiv': 'magenta', 'hirid': 'cyan'}
         norm = plt.Normalize(vmin=min(alphas), vmax=max(alphas))
@@ -120,7 +120,7 @@ for r in range(2, 4):
         if r == 3:
             row, col = divmod(i,2)
         ax = axs[row, col]
-        data = pd.read_parquet(f'dsl_results/multiple alpha/multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
+        data = pd.read_parquet(f'dsl_results/multiple alpha/{outcome}/{outcome}_multiple_alphas_train_on_{group_combination}_forward_selection_results.parquet')
         alphas = data['alpha'].unique()
         for alpha in alphas:
             for col in data.columns:

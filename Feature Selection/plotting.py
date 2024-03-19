@@ -1,4 +1,4 @@
-# TODO: Make plots a bit nicer (i.e. same groups have same line color); compare with magging and prior results; which individual groups are chosen?
+# TODO: Make plots a bit nicer (i.e. same groups have same line color); compare with magging and prior results; which individual groups are chosen? Aim: robust stability selection
 import pandas as pd
 import matplotlib.pyplot as plt
 import itertools
