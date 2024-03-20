@@ -41,9 +41,9 @@ for r in range(2,4):
         _Xytrain = pd.concat([_Xydata[source] for source in group_combination], ignore_index=True)
         _Xtrain = pd.concat([preprocessor.fit_transform(_Xydata[source]) for source in group_combination], ignore_index=True)
         _Xtrain.fillna(0, inplace=True)
-        _ytrain = _Xytrain['outcome']
-        intercept = _ytrain.mean() # All models include per default mean as intercept
-        _ytrain = _ytrain - intercept
+        y_train = _Xytrain['outcome']
+        intercept = y_train.mean() # All models include per default mean as intercept
+        y_train = y_train - intercept
 
         # Function to generating the augmented dataset
         interactions = ColumnTransformer(
@@ -82,21 +82,21 @@ for r in range(2,4):
             ]
         ).set_output(transform="pandas")
 
-        _Xtrain_augmented = interactions.fit_transform(_Xtrain) 
+        X_train_augmented = interactions.fit_transform(_Xtrain) 
 
         # Control degree of sharing
         r_g = {source: len(_Xydata[source])/len(_Xtrain) for source in group_combination}
 
-        for column in _Xtrain_augmented.columns: 
+        for column in X_train_augmented.columns: 
             if 'passthrough' not in column: 
                 if 'eicu' in column: 
-                    _Xtrain_augmented[column] = 1/np.sqrt(r_g['eicu'])*_Xtrain_augmented[column]
+                    X_train_augmented[column] = 1/np.sqrt(r_g['eicu'])*X_train_augmented[column]
                 elif 'mimic' in column:
-                    _Xtrain_augmented[column] = 1/np.sqrt(r_g['mimic'])*_Xtrain_augmented[column]
+                    X_train_augmented[column] = 1/np.sqrt(r_g['mimic'])*X_train_augmented[column]
                 elif 'miiv' in column:
-                    _Xtrain_augmented[column] = 1/np.sqrt(r_g['miiv'])*_Xtrain_augmented[column]
+                    X_train_augmented[column] = 1/np.sqrt(r_g['miiv'])*X_train_augmented[column]
                 elif 'hirid' in column: 
-                    _Xtrain_augmented[column] = 1/np.sqrt(r_g['hirid'])*_Xtrain_augmented[column]
+                    X_train_augmented[column] = 1/np.sqrt(r_g['hirid'])*X_train_augmented[column]
         
         # Forward selection for each alpha value
         forward_coef = []
@@ -107,7 +107,7 @@ for r in range(2,4):
                     alpha_data[f'test mse {dataset}'] = []
             for i in range(51):
                 model = Lasso(fit_intercept=False, alpha=alpha, max_iter=10000000) # Intercept has already been deducted
-                X = _Xtrain_augmented.copy()
+                X = X_train_augmented.copy()
                 if i != 0:
                     X.drop(columns=alpha_data['name'], inplace=True)
                 name = []
@@ -120,9 +120,9 @@ for r in range(2,4):
                             selected_columns.append(feature)
                         else:
                             selected_columns = [feature]
-                        model.fit(_Xtrain_augmented[selected_columns], _ytrain)
+                        model.fit(X_train_augmented[selected_columns], y_train)
                         name.append(feature)
-                        train_mse.append(mean_squared_error(_ytrain, model.predict(_Xtrain_augmented[selected_columns])))
+                        train_mse.append(mean_squared_error(y_train, model.predict(X_train_augmented[selected_columns])))
                         # Use current model and predict on test data
                         for dataset in datasets:
                             if dataset not in group_combination:

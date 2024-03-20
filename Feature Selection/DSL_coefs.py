@@ -29,7 +29,7 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'map'
+outcome = 'hr'
 n_states = 10 # number of random states
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']

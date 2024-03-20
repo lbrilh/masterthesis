@@ -74,7 +74,7 @@ interactions = ColumnTransformer(
             [column for column in X_train.columns],
         )
     ]
-)
+).set_output(transform="pandas")
 
 X_train_augmented = interactions.fit_transform(X_train) 
 
@@ -116,7 +116,6 @@ fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
 plt.savefig(f'images/lasso profiles/{outcome}/{outcome}_common_effects_DSL_preprocessed_individ.png')
 plt.show()
-plt.close()
 
 # Print and plot Lasso path of group effects against shrinkage factor
 fig, axs = plt.subplots(2, 2, figsize=(15,9))
