@@ -1,10 +1,11 @@
 ''' 
-    This code plots the 10 most important coefficients (absolute size) of DSL in a barplot.
-    Positive coefficients are blue and negative coefficients are red. 
-    The penalty term alpha is chosen via cross-validation. 
-    The degree of sharing is controlled using r_g. The value of r_g is the relative size of the group to the entire dataset, i.e. larger groups are forced to 
-    share more than smaller groups. Each group is preprocessed individually.
-    Running this code requires CATEGORICAL_COLUMNS = ['sex', 'source'] in constants.py
+    Calculates and stores the coefficients for Pooled Lasso with response variable "outcome". 
+    The coefficients are oreder by their absolute magintude. 
+    An indicator is assigned indicating the sign of the coefficient (positive: 1, negative: 0).
+    The penalty term alpha is chosen via 5-Fold cross-validation. 
+    To mitigate the risk associated with selecting a potentially unfavorable random state during the initialization phase of Lasso calculation, 
+    we employ the parameter n_states to manage the random states during initialization. Subsequently, we compute the average of the coefficients obtained from multiple initializations.
+    Running this code requires CATEGORICAL_COLUMNS = ['sex'] in constants.py
 '''
 
 import sys
@@ -27,7 +28,7 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'hr'
+outcome = 'map'
 n_states = 10 # number of random states
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
@@ -60,4 +61,4 @@ coefs['abs_coefs'] = np.abs(coefs["Avg coefs"])
 coefs['feature names'] = search.best_estimator_.feature_names_in_
 coefs['color'] = (coefs['Avg coefs']>=0).astype('bool')
 coefs.sort_values(by='abs_coefs', inplace=True, ascending=False)
-coefs.to_parquet('Pooled_Lasso_coefs.parquet')
+coefs.to_parquet(f'parquet/{outcome}/Pooled_Lasso_coefs_{outcome}.parquet')

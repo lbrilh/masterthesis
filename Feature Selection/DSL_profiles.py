@@ -33,11 +33,12 @@ Preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(missing_indicator=False)
     ).set_output(transform="pandas")
 
-_Xytrain = pd.concat([_Xydata[source] for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
-_Xtrain = pd.concat([Preprocessor.fit_transform(_Xydata[source]) for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
-_Xtrain.fillna(0, inplace=True)
-_ytrain = _Xytrain['outcome']
-y_mean = _ytrain.mean()
+Xy_train = pd.concat([_Xydata[source] for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
+X_train = pd.concat([Preprocessor.fit_transform(_Xydata[source]) for source in ['eicu', 'mimic', 'miiv', 'hirid']], ignore_index=True)
+X_train.fillna(0, inplace=True)
+y_train = Xy_train['outcome']
+y_mean = y_train.mean()
+y_train = y_train - y_mean
 
 # Start generating the augmented dataset
 interactions = ColumnTransformer(
@@ -47,7 +48,7 @@ interactions = ColumnTransformer(
             "passthrough",
             [
                 column
-                for column in _Xtrain.columns
+                for column in X_train.columns
                 if "categorical__source" not in column
             ],
         ),
@@ -64,36 +65,36 @@ interactions = ColumnTransformer(
                                     ),
                                     [source, column],
                                 )
-                                for source in _Xtrain.columns
+                                for source in X_train.columns
                                 if "categorical__source" in source
-                                for column in _Xtrain.columns
+                                for column in X_train.columns
                                 if "categorical__source" not in column
                             ]
             ),
-            [column for column in _Xtrain.columns],
+            [column for column in X_train.columns],
         )
     ]
 )
 
-_Xtrain_augmented = interactions.fit_transform(_Xtrain) 
+X_train_augmented = interactions.fit_transform(X_train) 
 
 # Control degree of sharing
-r_g = {source: len(_Xydata[source])/len(_Xtrain) for source in ['eicu', 'mimic', 'miiv', 'hirid']}
+r_g = {source: len(_Xydata[source])/len(X_train) for source in ['eicu', 'mimic', 'miiv', 'hirid']}
 
-for column in _Xtrain_augmented.columns: 
+for column in X_train_augmented.columns: 
     if 'passthrough' not in column: 
         if 'eicu' in column: 
-            _Xtrain_augmented[column] = 1/np.sqrt(r_g['eicu'])*_Xtrain_augmented[column]
+            X_train_augmented[column] = 1/np.sqrt(r_g['eicu'])*X_train_augmented[column]
         elif 'mimic' in column:
-            _Xtrain_augmented[column] = 1/np.sqrt(r_g['mimic'])*_Xtrain_augmented[column]
+            X_train_augmented[column] = 1/np.sqrt(r_g['mimic'])*X_train_augmented[column]
         elif 'miiv' in column:
-            _Xtrain_augmented[column] = 1/np.sqrt(r_g['miiv'])*_Xtrain_augmented[column]
+            X_train_augmented[column] = 1/np.sqrt(r_g['miiv'])*X_train_augmented[column]
         elif 'hirid' in column: 
-            _Xtrain_augmented[column] = 1/np.sqrt(r_g['hirid'])*_Xtrain_augmented[column]
+            X_train_augmented[column] = 1/np.sqrt(r_g['hirid'])*X_train_augmented[column]
     
 # Calculate the Lasso profiles
 print(f"Computing regularization path using LARS on DSL ...")
-alphas, active, coefs = lars_path(_Xtrain_augmented.to_numpy(), _ytrain.to_numpy() - y_mean, method=method, verbose=True)
+alphas, active, coefs = lars_path(X_train_augmented.to_numpy(), y_train.to_numpy(), method=method, verbose=True)
 
 # Print and plot Lasso path of common effects against shrinkage factor
 coefs_shared = coefs[:51, :] # shared effects
@@ -101,7 +102,7 @@ fig, ax = plt.subplots(figsize=(15,9))
 xx = np.sum(np.abs(coefs_shared.T), axis=1)
 xx /= xx[-1]
 feature_indices = np.argsort(np.abs(coefs_shared[:, -1]))[-4:]
-feature_names = [list(_Xtrain_augmented.columns)[i] for i in feature_indices]
+feature_names = [list(X_train_augmented.columns)[i] for i in feature_indices]
 xmax = max(xx)
 print('common effects: ', feature_names)
 ax.plot(xx, coefs_shared.T)
@@ -113,7 +114,7 @@ ax.set_title(f"LASSO Path of shared coeffs in DSL")
 ax.axis("tight")
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig(f'images/{outcome}_common_effects_DSL_preprocessed_individ.png')
+plt.savefig(f'images/lasso profiles/{outcome}/{outcome}_common_effects_DSL_preprocessed_individ.png')
 plt.show()
 plt.close()
 
@@ -126,7 +127,7 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     xx = np.sum(np.abs(_coefs.T), axis=1)
     xx /= xx[-1]
     feature_indices = np.argsort(np.abs(_coefs[:, -1]))[-4:]
-    feature_names = [list(_Xtrain_augmented.iloc[:, (1+i)*51:(2+i)*51].columns)[j] for j in feature_indices]
+    feature_names = [list(X_train_augmented.iloc[:, (1+i)*51:(2+i)*51].columns)[j] for j in feature_indices]
     xmax = max(xx)
     print(f'{source} effects: ', feature_names)
     ax.plot(xx, _coefs.T)
@@ -138,5 +139,5 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     ax.axis("tight")
 fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig(f'images/{outcome}_individual_groups_DSL_preprocessed_individ.png')
+plt.savefig(f'images/lasso profiles/{outcome}/{outcome}_individual_groups_DSL_preprocessed_individ.png')
 plt.show()

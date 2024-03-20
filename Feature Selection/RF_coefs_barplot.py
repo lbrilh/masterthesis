@@ -1,5 +1,5 @@
 '''
-    This code calculates and plots feature importances of predictor variables when using outcome as response variable.
+    This code calculates and plots feature importances using a Random Forest with outcome as response variable.
     The feature importances are calculated using LightGBMs version of RandomForest.
     They are displayed for each datasource seperately and once when caluclated for all datasources together.
 '''
@@ -22,7 +22,7 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'hr'
+outcome = 'map'
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 data = load_data_for_prediction(outcome=outcome)
@@ -35,6 +35,7 @@ preprocessing = ColumnTransformer(
 X_all = pd.concat([preprocessing.fit_transform(Xy_data[source]) for source in datasets], ignore_index=True)
 y_all = pd.concat([Xy_data[source]['outcome'] for source in datasets])
 
+# Calculate and plot feature importances for each dataset separately
 fig, axs = plt.subplots(2,2, figsize=(12,9))
 for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):     
     row, col = divmod(i, 2)
@@ -55,9 +56,10 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     sns.barplot(x=feature_importances['Importance'], y=feature_importances['Feature Names'], orient='h', ax=ax, alpha=0.7)
     ax.set_ylabel("")
 plt.tight_layout()
-plt.savefig('images/barplots/RF_individual_feature_importances.png')
+plt.savefig(f'images/barplots/{outcome}/RF_individual_feature_importances_{outcome}.png')
 plt.show()
 
+# Calculate and plot feature importances for the entire dataset
 model = LGBMRegressor(boosting_type='rf', feature_fraction=0.8)
 model.fit(X_all, y_all)
 feature_names = []
@@ -73,5 +75,5 @@ feature_importances = feature_importances.iloc[:10]
 sns.barplot(x=feature_importances['Importance'], y=feature_importances['Feature Names'], orient='h', alpha=0.7)
 plt.ylabel("")
 plt.tight_layout()
-plt.savefig('images/barplots/RF_all_feature_importances.png')
+plt.savefig(f'images/barplots/{outcome}/RF_all_feature_importances_{outcome}.png')
 plt.show()

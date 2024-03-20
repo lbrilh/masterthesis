@@ -1,3 +1,8 @@
+'''
+    Generate bar plots for the coefficients of Pooled Lasso.
+    The response variable is "outcome".
+'''
+
 import sys
 import os
 
@@ -9,9 +14,10 @@ import seaborn as sns
 
 outcome = 'hr'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
-coefs = pd.read_parquet('Pooled_Lasso_coefs.parquet')
 
+coefs = pd.read_parquet(f'parquet/{outcome}/Pooled_Lasso_coefs.parquet')
 features = coefs['feature names'].str.split(r'numeric__|categorical__sex_',expand=True)
+
 color_palette = []
 for color_indice in coefs['color']: # assign colour corresponding to the color indice
     if color_indice == 1:
@@ -24,5 +30,5 @@ sns.barplot(x=coefs["abs_coefs"].iloc[:10], y=features[1].iloc[:10], hue=feature
 plt.title('Pooled Lasso')
 plt.ylabel('')
 plt.xlabel("Absolute Value of Coefficient")
-plt.savefig(f'images/barplots/Pooled_Lasso_coefs_{outcome}.png')
+plt.savefig(f'images/barplots/{outcome}/Pooled_Lasso_coefs_{outcome}.png')
 plt.show()

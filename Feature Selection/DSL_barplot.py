@@ -1,3 +1,8 @@
+'''
+    Generate bar plots for individual and shared coefficients of Data Shared Lasso.
+    The response variable is "outcome".
+'''
+
 import sys
 import os
 
@@ -7,10 +12,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-outcome = 'hr'
+outcome = 'map'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
-coefs = pd.read_parquet('dsl_coefs.parquet')
+coefs = pd.read_parquet(f'parquet/{outcome}/dsl_coefs_{outcome}.parquet')
 
+# Figure containing barplot for each group specific coefficients order by absolute magnitude and colour indicates sign 
 fig, axs = plt.subplots(2,2,figsize=(12,9))
 for i, source in enumerate(datasets):
     row, col = divmod(i,2)
@@ -29,8 +35,9 @@ for i, source in enumerate(datasets):
     ax.set_ylabel('')
     ax.set_title(source)
 plt.tight_layout()
-plt.savefig(f'images/barplots/DSL_individual_coefs_{outcome}.png')
+plt.savefig(f'images/barplots/{outcome}/DSL_individual_coefs_{outcome}.png')
 
+# Barplot for shared/common coefficinets ordered by absolute magnitude and colour indicates sign 
 shared = coefs['feature names'].str.contains('passthrough')
 shared_coefs = coefs[shared]
 source_features = shared_coefs['feature names'].str.split(r'passthrough_features__numeric__|passthrough_features__categorical__sex_',expand=True)
@@ -40,11 +47,9 @@ for color_indice in shared_coefs['color']: # assign colour corresponding to the 
         color_palette.append('b')
     else: 
         color_palette.append('r')
-
-
 plt.figure(figsize=(12,9))
 sns.barplot(x=shared_coefs["abs_coefs"].iloc[:10], y=source_features[1].iloc[:10], hue=source_features[1].iloc[:10], orient="h", palette=color_palette[:10], legend=False, alpha=0.5)
 plt.ylabel('Shared Coefficients')
 plt.xlabel("Absolute Value of Coefficient")
-plt.savefig(f'images/barplots/DSL_shared_coefs_{outcome}.png')
+plt.savefig(f'images/barplots/{outcome}/DSL_shared_coefs_{outcome}.png')
 plt.show()
