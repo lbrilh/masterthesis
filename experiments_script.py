@@ -16,7 +16,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
-from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, Regressor, Preprocessing, n_fine_tuning
+from set_up import hyper_parameters, model, outcome, n_seeds, sources, training_source, regressor, preprocessing, n_fine_tuning
 from data import results_exist, save_data, load_data
 from icu_experiments.preprocessing import make_feature_preprocessing
 from methods import RefitLGBMRegressor
@@ -31,8 +31,8 @@ if model == 'lgbm' or model == 'rf' or model == 'lgbm_refit':
     _data[training_source]['train']['sex'] = _data[training_source]['train']['sex'].astype('category')
 
 pipeline = Pipeline(steps=[
-    ('preprocessing', Preprocessing),
-    ('model', Regressor)
+    ('preprocessing', preprocessing),
+    ('model', regressor)
 ])
 
 boosting_methods=['anchor_lgbm']
@@ -164,7 +164,7 @@ if not results_exist(path=f'{model}_results.pkl'):
         for comb, hyper_para_set in enumerate(itertools.product(*hyper_parameters['lgbm'].values())):
             hyper_para = dict(zip(hyper_parameters['lgbm'].keys(), hyper_para_set))
             pipeline_lgbm = Pipeline(steps=[
-                ('preprocessing', Preprocessing),
+                ('preprocessing', preprocessing),
                 ('model', LGBMRegressor())
             ])
             pipeline_lgbm.named_steps['model'].set_params(**hyper_para)
