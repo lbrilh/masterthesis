@@ -1,3 +1,7 @@
+'''
+    The numerical and categorical features used in our models. 
+'''
+
 NUMERICAL_COLUMNS = [
     "age",
     "alb",
@@ -50,7 +54,7 @@ NUMERICAL_COLUMNS = [
     "weight",
 ]
 CATEGORICAL_COLUMNS = ["sex"]
-ANCHOR_COLUMNS = ["hospital_id"]  # , "source"]
+ANCHOR_COLUMNS = ["hospital_id"]
 
 LOG_COLUMNS = [
     "alp",

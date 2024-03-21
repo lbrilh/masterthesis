@@ -1,7 +1,7 @@
 '''
-    This script calculates the magging estimator and its prediction as follows: 
+    This script calculates the magging estimator for for combinations of different datasets and its prediction as follows: 
         1. Perfrom 5 fold cv on the individual groups to find the optimal penalty terms
-        2. Calculate in-group regression coefficients (Lasso coefs.)
+        2. Calculate in-group regression coefficients (via Lasso)
         3. Calculates the magging weights
         4. Use Magging to predict on groups that have NOT been used to calculate the weights 
 '''
@@ -17,9 +17,32 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import Lasso
 from sklearn.compose import ColumnTransformer
+from lightgbm import LGBMRegressor
 
 from preprocessing import make_feature_preprocessing
 
+model = 'lasso'
+
+assert model in ['lasso', 'rf'], 'model not specified'
+
+if model == 'lasso':
+    regressor = Lasso(max_iter=10000)
+    hyper_prameters = {'model__alpha': np.linspace(0.01,10,50)}
+    preprocessor = ColumnTransformer(
+        transformers=make_feature_preprocessing(missing_indicator=True, categorical_indicator=False)
+        ).set_output(transform="pandas")
+elif model == 'rf':
+    regressor = LGBMRegressor(boosting_type='rf')
+    preprocessor = ColumnTransformer(
+        transformers=make_feature_preprocessing(missing_indicator=False, categorical_indicator=False)
+        ).set_output(transform="pandas")
+    hyper_prameters = {
+        'model__learning_rate': [0.01, 0.1, 0.3],
+        'model__n_estimators': [100, 800],
+        'model__num_leaves': [50, 200, 1024],
+        'model__feature_fraction': [0.5, 0.9],
+        'model__verbose': [-1]
+        }
 
 # Load data from parquet folder in parent direction
 def load_data(outcome, source, version='train'):
@@ -33,30 +56,29 @@ def load_data(outcome, source, version='train'):
 datasets = ['mimic', 'hirid', 'eicu', 'miiv']
 _Xydata={source: load_data('hr',source)[lambda x: x['sex'].isin(['Male', 'Female'])] for source in datasets}
 
-# Initalize pipeline for in-group prediction
-preprocessor = ColumnTransformer(
-    transformers=make_feature_preprocessing('outcome', missing_indicator=True, categorical_indicator=False, lgbm=False)
-    ).set_output(transform="pandas")
-
 pipeline = Pipeline(steps=[
         ('preprocessing', preprocessor),
-        ('model', Lasso(max_iter = 10000))]
+        ('model', regressor)]
     )
 
 # Estimate in-group coefficients and use them to predict on the entire dataset  
 _results_groups = {dataset: {} for dataset in datasets} 
 for dataset in datasets:
     print(f'Start with CV on {dataset}')
-    search = GridSearchCV(pipeline, param_grid={'model__alpha': np.linspace(0.01,10,50)})
+    search = GridSearchCV(pipeline, param_grid=hyper_prameters)
     search.fit(_Xydata[dataset], _Xydata[dataset]['outcome'])
-    for r in range(2,len(datasets)):
-        for group_combination in combinations(datasets,r):
-            if dataset in group_combination:
-                _results_groups[dataset][group_combination] = {
-                    'alpha': search.best_params_['model__alpha'],
-                    '_coef': search.best_estimator_.named_steps['model'].coef_,
-                    'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
-                }
+    if model == 'lasso':
+        _results_groups[dataset] = {
+            'alpha': search.best_params_['model__alpha'],
+            '_coef': search.best_estimator_.named_steps['model'].coef_,
+            'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
+        }
+    elif model == 'rf': 
+        _results_groups[dataset] = {
+            'alpha': search.best_params_['model__alpha'],
+            '_coef': search.best_estimator_.named_steps['model'].coef_,
+            'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
+        }
     print(f'Done with {dataset}')
 
 # Calculate the magging prediction
