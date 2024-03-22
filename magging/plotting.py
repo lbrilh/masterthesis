@@ -1,6 +1,7 @@
 '''
-    This file creates a boxplot and a kernel-density estimator plot for the y variable (48-72h after 
-    admission) conditioned on category. Additionally, it creates a population plot. 
+    This file creates a boxplot and a kernel-density estimator plot for the y-variable (48-72h after 
+    admission) conditioned on category and it creates a kde estimator plot for the y-variable on the entire datasets. 
+    Additionally, it creates a population plot. 
 '''
 import os
 

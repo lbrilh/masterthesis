@@ -21,7 +21,8 @@ from lightgbm import LGBMRegressor
 
 from preprocessing import make_feature_preprocessing
 
-model = 'lasso'
+outcome = 'hr'
+model = 'rf'
 
 assert model in ['lasso', 'rf'], 'model not specified'
 
@@ -29,7 +30,7 @@ if model == 'lasso':
     regressor = Lasso(max_iter=10000)
     hyper_prameters = {'model__alpha': np.linspace(0.01,10,50)}
     preprocessor = ColumnTransformer(
-        transformers=make_feature_preprocessing(missing_indicator=True, categorical_indicator=False)
+        transformers=make_feature_preprocessing(missing_indicator=True, categorical_indicator=True)
         ).set_output(transform="pandas")
 elif model == 'rf':
     regressor = LGBMRegressor(boosting_type='rf')
@@ -53,8 +54,8 @@ def load_data(outcome, source, version='train'):
     return _data 
 
 # Include only admissions where sex is recorded
-datasets = ['mimic', 'hirid', 'eicu', 'miiv']
-_Xydata={source: load_data('hr',source)[lambda x: x['sex'].isin(['Male', 'Female'])] for source in datasets}
+datasets = ['eicu', 'hirid', 'mimic', 'miiv']
+Xy_data={source: load_data('hr',source)[lambda x: x['sex'].isin(['Male', 'Female'])] for source in datasets}
 
 pipeline = Pipeline(steps=[
         ('preprocessing', preprocessor),
@@ -62,32 +63,34 @@ pipeline = Pipeline(steps=[
     )
 
 # Estimate in-group coefficients and use them to predict on the entire dataset  
-_results_groups = {dataset: {} for dataset in datasets} 
+results_groups = {dataset: {} for dataset in datasets} 
 for dataset in datasets:
     print(f'Start with CV on {dataset}')
     search = GridSearchCV(pipeline, param_grid=hyper_prameters)
-    search.fit(_Xydata[dataset], _Xydata[dataset]['outcome'])
-    if model == 'lasso':
-        _results_groups[dataset] = {
-            'alpha': search.best_params_['model__alpha'],
-            '_coef': search.best_estimator_.named_steps['model'].coef_,
-            'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
-        }
-    elif model == 'rf': 
-        _results_groups[dataset] = {
-            'alpha': search.best_params_['model__alpha'],
-            '_coef': search.best_estimator_.named_steps['model'].coef_,
-            'pred': np.vstack((search.predict(pd.concat([_Xydata[group] for group in group_combination]))))
-        }
+    search.fit(Xy_data[dataset], Xy_data[dataset]['outcome'])
+    for r in range(2,4):
+        for group_combination in combinations(datasets, r): 
+            if dataset in group_combination: 
+                if model == 'lasso':
+                    results_groups[dataset][group_combination] = {
+                        'alpha': search.best_params_['model__alpha'],
+                        '_coef': search.best_estimator_.named_steps['model'].coef_,
+                        'pred': search.predict(pd.concat([Xy_data[group] for group in group_combination]))
+                    }
+                elif model == 'rf': 
+                    results_groups[dataset][group_combination] = {
+                        'hyper parameters': search.best_params_,
+                        'pred': search.predict(pd.concat([Xy_data[group] for group in group_combination]))
+                    }
     print(f'Done with {dataset}')
 
 # Calculate the magging prediction
-_magging_results = {dataset: {} for dataset in datasets}
+magging_results = {dataset: {} for dataset in datasets}
 for r in range(2, len(datasets)):
     for group_combination in combinations(datasets,r):
         # Solve the quadratic program to obtain magging weights
-        n_obs = pd.concat([_Xydata[group] for group in group_combination]).shape[0]
-        fhat = np.column_stack([_results_groups[group][group_combination]['pred'] for group in group_combination])
+        n_obs = pd.concat([Xy_data[group] for group in group_combination]).shape[0]
+        fhat = np.column_stack([results_groups[group][group_combination]['pred'] for group in group_combination])
         H = fhat.T @ fhat / n_obs
         if not all(np.linalg.eigvals(H) > 0): # Ensure H is positive definite
             print("Attention: Matrix H is not positive definite")
@@ -106,19 +109,33 @@ for r in range(2, len(datasets)):
             if dataset not in group_combination:
                 predictions = []
                 for group in group_combination:
-                    pipeline.named_steps['model'].alpha = _results_groups[group][group_combination]['alpha']
-                    pipeline.fit(_Xydata[group], _Xydata[group]['outcome'])
-                    predictions.append(np.array(pipeline.predict(_Xydata[dataset])))
+                    if model == 'lasso':
+                        pipeline.named_steps['model'].alpha = results_groups[group][group_combination]['alpha']
+                    elif model == 'rf': 
+                        pipeline.named_steps['model'].set_params(results_groups[group][group_combination]['hyper parameters'])
+                    pipeline.fit(Xy_data[group], Xy_data[group]['outcome'])
+                    predictions.append(np.array(pipeline.predict(Xy_data[dataset])))
                 if predictions: 
                     y_pred = np.dot(w, predictions)
-                    _magging_results[dataset][group_combination] = {
-                        'weights': w,
-                        'mse Magging':  mean_squared_error(_Xydata[dataset]['outcome'], y_pred),
-                        'Matrix p.d.': all(np.linalg.eigvals(H) > 0),
-                        'mse single groups': [mean_squared_error(_Xydata[dataset]['outcome'], prediction) for prediction in predictions],
-                        'alpha': [_results_groups[group][group_combination]['alpha'] for group in group_combination]
-                    }
-print('Magging Results: ', _magging_results)
-print(pd.DataFrame(_magging_results))
-pd.DataFrame(_magging_results).to_latex()
+                    if model == 'lasso': 
+                        magging_results[dataset][group_combination] = {
+                            'weights': w,
+                            'mse Magging':  mean_squared_error(Xy_data[dataset]['outcome'], y_pred),
+                            'Matrix p.d.': all(np.linalg.eigvals(H) > 0),
+                            'mse single groups': [mean_squared_error(Xy_data[dataset]['outcome'], prediction) for prediction in predictions],
+                            'alpha': [results_groups[group][group_combination]['alpha'] for group in group_combination]
+                        }
+                    elif model == 'rf':
+                        y_pred = np.dot(w, predictions)
+                        magging_results[dataset][group_combination] = {
+                            'weights': w,
+                            'mse Magging':  mean_squared_error(Xy_data[dataset]['outcome'], y_pred),
+                            'Matrix p.d.': all(np.linalg.eigvals(H) > 0),
+                            'mse single groups': [mean_squared_error(Xy_data[dataset]['outcome'], prediction) for prediction in predictions],
+                            'alpha': [results_groups[group][group_combination]['hyper parameters'] for group in group_combination]
+                        }
+print('Magging Results: ', magging_results)
+print(pd.DataFrame(magging_results))
+pd.DataFrame(magging_results).to_parquet(f'parquet/{outcome}/magging_results.parquet')
+pd.DataFrame(magging_results).to_latex()
 print('Script run successfull')

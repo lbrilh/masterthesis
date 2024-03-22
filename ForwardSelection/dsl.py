@@ -38,10 +38,10 @@ alphas = np.linspace(0.001, 2, 10) # different regularisation strengths used for
 # For each r-combination of datasets, pefrom forward selection
 for r in range(2,4):
     for group_combination in combinations(datasets, r):
-        _Xytrain = pd.concat([_Xydata[source] for source in group_combination], ignore_index=True)
-        _Xtrain = pd.concat([preprocessor.fit_transform(_Xydata[source]) for source in group_combination], ignore_index=True)
-        _Xtrain.fillna(0, inplace=True)
-        y_train = _Xytrain['outcome']
+        Xy_train = pd.concat([_Xydata[source] for source in group_combination], ignore_index=True)
+        X_train = pd.concat([preprocessor.fit_transform(_Xydata[source]) for source in group_combination], ignore_index=True)
+        X_train.fillna(0, inplace=True)
+        y_train = Xy_train['outcome']
         intercept = y_train.mean() # All models include per default mean as intercept
         y_train = y_train - intercept
 
@@ -54,7 +54,7 @@ for r in range(2,4):
                     "passthrough",
                     [
                         column
-                        for column in _Xtrain.columns
+                        for column in X_train.columns
                         if "categorical__source" not in column
                     ],
                 ),
@@ -71,21 +71,21 @@ for r in range(2,4):
                                             ),
                                             [source, column],
                                         )
-                                        for source in _Xtrain.columns
+                                        for source in X_train.columns
                                         if "categorical__source" in source
-                                        for column in _Xtrain.columns
+                                        for column in X_train.columns
                                         if "categorical__source" not in column
                                     ]
                     ),
-                    [column for column in _Xtrain.columns],
+                    [column for column in X_train.columns],
                 )
             ]
         ).set_output(transform="pandas")
 
-        X_train_augmented = interactions.fit_transform(_Xtrain) 
+        X_train_augmented = interactions.fit_transform(X_train) 
 
         # Control degree of sharing
-        r_g = {source: len(_Xydata[source])/len(_Xtrain) for source in group_combination}
+        r_g = {source: len(_Xydata[source])/len(X_train) for source in group_combination}
 
         for column in X_train_augmented.columns: 
             if 'passthrough' not in column: 

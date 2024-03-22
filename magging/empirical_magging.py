@@ -1,5 +1,6 @@
 ''' 
     Calculate the group estimators based on the alphas found in optimal_penalty.py
+    In theory, preprocessing.py must be adjusted. 
 '''
 import os
 import pandas as pd
@@ -21,7 +22,8 @@ grouping_column = 'age_group'
 age_group = True
 dataset_to_plot = 'mimic'
 oracle_dataset = 'miiv'
-optimal_alphas = {'child': 2.8, 'young adults': 7 , 'middle age': 6.4, 'senior': 5.2}
+
+optimal_alphas = {'child': 0.001, 'young adults': 0.001, 'middle age': 0.001, 'senior': 0.001}
 
 # Load data from global parquet folder 
 def load_data(outcome, source, version='train'):
@@ -52,20 +54,14 @@ if age_group:
         print(_Xydata[dataset]['age_group'].isna().sum())
 
 
-Preprocessor = ColumnTransformer(
+preprocessor = ColumnTransformer(
     transformers=make_feature_preprocessing(grouping_column, 'outcome', missing_indicator=False, categorical_indicator=True, lgbm=False)
     ).set_output(transform="pandas")
 
-pipeline = Pipeline(steps=[
-        ('preprocessing', Preprocessor),
-        ('model', Magging(Lasso, f'grouping_column__{grouping_column}', max_iter = 10000))
-        ])
-
-Xy = Preprocessor.fit_transform(_Xydata[dataset_to_plot])
-oracle_Xy = Preprocessor.fit_transform(_Xydata[oracle_dataset])
+Xy = preprocessor.fit_transform(_Xydata[dataset_to_plot])
+oracle_Xy = preprocessor.fit_transform(_Xydata[oracle_dataset])
 oracle_X = oracle_Xy.drop(columns=['outcome__outcome', f'grouping_column__{grouping_column}'])
 X = Xy.drop(columns = ['outcome__outcome', f'grouping_column__{grouping_column}'])
-
 
 group_predictions = []
 out_of_sample_prediction = []
@@ -84,72 +80,6 @@ for group in ['child', 'young adults', 'middle age', 'senior']:
     print(f'Magging distance for group {group}: ', ((u_array).T @ Sigma @ (u_array)))   
     group_predictions.append(model.predict(X))
 
-'''
-nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
-ncols = 2
-# Standardized residuals plot
-fig, axes = plt.subplots(nrows,ncols)
-for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
-    _Xygroup = Xy[Xy[f'grouping_column__{grouping_column}'] == group]
-    residues = np.array(_Xygroup['outcome__outcome'] - np.array(in_group_pred[group]))
-    transformed_residuals = np.sqrt(np.abs(residues / np.std(residues)))
-    ax = plt.subplot(nrows, ncols, i+1)
-    plt.scatter(np.arange(len(transformed_residuals)), transformed_residuals, marker='o', alpha=0.05)
-    ax.spines[['right','top']].set_visible(False)
-    plt.axhline(y=1, color='black', linestyle='--', alpha=0.5)
-    plt.title(group)
-fig.suptitle("Standardized Residuals Plot", fontweight='bold', fontsize=15)
-plt.tight_layout()
-plt.show()
-
-nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
-ncols = 2
-# Tukey Anscombe plot
-########################################## Center y axis
-fig, axes = plt.subplots(nrows,ncols)
-for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
-    _Xygroup = Xy[Xy[f'grouping_column__{grouping_column}'] == group]
-    residues = np.array(_Xygroup['outcome__outcome'] - np.array(in_group_pred[group]))
-    tukey_anscombe = (residues - np.mean(residues)) / np.std(residues)
-    ax = plt.subplot(nrows, ncols, i+1)
-    plt.scatter(np.arange(len(tukey_anscombe)), tukey_anscombe, alpha=0.05)
-    plt.yticks([-5,0,5])
-    plt.ylim([-5,5])
-    ax.spines['bottom'].set_position('zero')
-    ax.spines[['right','top']].set_visible(False)
-    plt.title(group)
-fig.suptitle("Tukey-Anscombe Plot for Groups", fontweight='bold', fontsize=15)
-plt.tight_layout()
-plt.show()
-
-# QQ Plot
-nrows = len(['child', 'young adults', 'middle age', 'senior'])//2
-ncols = 2
-fig, axes = plt.subplots(nrows,ncols)
-for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
-    _Xygroup = Xy[Xy[f'grouping_column__{grouping_column}'] == group]
-    residues = np.array(_Xygroup['outcome__outcome'] - np.array(in_group_pred[group]))
-    ax=plt.subplot(nrows, ncols, i+1)
-    # Create the QQ plot
-    sm.qqplot(residues, line='s', ax=ax)
-    #sm.qqplot(residues, line='s', ax=axes.flatten()[i])
-    plt.yticks([-100,0,100])
-    plt.title(group)
-plt.suptitle(f'QQ Plot', fontweight='bold', fontsize=15)
-plt.tight_layout()
-plt.show()
-
-# Correlation plot
-for i, group in enumerate(['child', 'young adults', 'middle age', 'senior']):
-    _Xygroup = Xy[Xy[f'grouping_column__{grouping_column}'] == group]
-    plt.scatter(np.array(in_group_pred[group]), _Xygroup['outcome__outcome'], alpha=0.2)
-    plt.title('Correlation of estimated and true y', fontweight='bold', fontsize=15)
-    plt.xlabel('Predictions')
-    plt.ylabel('y')
-    plt.gca().spines['top'].set_visible(False)
-    plt.gca().spines['right'].set_visible(False)
-    plt.show()
-'''
 group_prediction_matrix = np.matrix(group_predictions).T
 r = group_prediction_matrix.shape[1]
 if r == 1:
@@ -178,13 +108,11 @@ y_pred = np.dot(w, out_of_sample_prediction)
 mse = mean_squared_error(oracle_Xy['outcome__outcome'].values, y_pred)
 print(mse)
 
-raise ValueError
 pipeline.named_steps['model'].group_predictions(X)
 
 for group in pipeline.named_steps['model'].groups:
     print(group, pipeline.named_steps['model'].models[group].coef_)
 
-raise ValueError
 pipeline.named_steps['model'].weights(X)
 yhat = pipeline.named_steps['model'].predict(X)
 

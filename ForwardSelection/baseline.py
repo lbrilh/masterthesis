@@ -23,12 +23,12 @@ from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 from preprocessing import make_feature_preprocessing
 
-outcome = 'map'
+outcome = 'hr'
 method = 'lasso'
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 data = load_data_for_prediction(outcome=outcome) # load datasets with specified outcome
-_Xydata = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in datasets}
+Xy_data = {source: data[source]['train'][lambda x: (x['sex'].eq('Male'))|(x['sex'].eq('Female'))] for source in datasets}
 
 # Initialize preprocessing of individual groups
 preprocessor = ColumnTransformer(
@@ -37,13 +37,12 @@ preprocessor = ColumnTransformer(
 
 selected_alphas = {'group name': [], 'alpha': []} # optimal penalty parameter per group combination
 
-
 # For each r-combination of datasets, pefrom forward selection
 for r in range(2,4):
     for group_combination in combinations(datasets, r):
         
-        Xytrain = pd.concat([_Xydata[source] for source in group_combination], ignore_index=True)
-        Xtrain = pd.concat([preprocessor.fit_transform(_Xydata[source]) for source in group_combination], ignore_index=True)
+        Xytrain = pd.concat([Xy_data[source] for source in group_combination], ignore_index=True)
+        Xtrain = pd.concat([preprocessor.fit_transform(Xy_data[source]) for source in group_combination], ignore_index=True)
         ytrain = Xytrain['outcome']
         intercept = ytrain.mean()
         ytrain = ytrain - intercept # All models include mean as intercept per default
@@ -80,8 +79,8 @@ for r in range(2,4):
                 train_mse.append(mean_squared_error(ytrain, model.predict(Xtrain[selected_columns])))
                 for dataset in datasets:
                     if dataset not in group_combination:
-                        Xtest = preprocessor.fit_transform(_Xydata[dataset])
-                        test_mse[dataset].append(mean_squared_error(_Xydata[dataset]['outcome'] - intercept, model.predict(Xtest[selected_columns])))
+                        Xtest = preprocessor.fit_transform(Xy_data[dataset])
+                        test_mse[dataset].append(mean_squared_error(Xy_data[dataset]['outcome'] - intercept, model.predict(Xtest[selected_columns])))
             results_step_df = pd.DataFrame({'name': name, 'train mse': train_mse})
             for dataset in datasets:
                 if dataset not in group_combination:

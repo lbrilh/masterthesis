@@ -1,5 +1,5 @@
 ''' 
-    ToDo Comments
+    Compare estimations of Data Shared Lasso and Magging on artificial data.
 '''
 
 import numpy as np
@@ -14,7 +14,7 @@ from sklearn.metrics import mean_squared_error
 
 np.random.seed(seed=0)
 
-# Initialize alphas and ratios for Magging and Data-Shared Lasso
+# Initialize alphas and ratios for Magging and Data-Shared Lasso - log-space 
 alphas = np.exp(np.linspace(np.log(0.0001),np.log(5), 75))
 ratios = np.exp(np.linspace(np.log(0.001), np.log(5), 10))
 
@@ -28,7 +28,7 @@ group_size = int(n_samples/n_sources)
 X = np.random.normal(size=(n_samples, 2))
 y = np.array([])
 model = Lasso(max_iter=100000)
-######## choose best alpha
+# choose best alpha
 for source in range(n_sources):
     betas.append(np.random.normal(loc=[group_size, 4], size=2))
     X_group = X[source*group_size:(source+1)*group_size]
@@ -123,4 +123,6 @@ for alpha in alphas:
     model.fit(augmented_X, y)
     model_mse = mean_squared_error(model.predict(augmented_X), y)
     ax.plot(model.coef_[0], model.coef_[1], "ok", alpha=0.4)
+
+plt.savefig('images/ComparisonDSLMagging/magging_dsl_comparison.png')
 plt.show()

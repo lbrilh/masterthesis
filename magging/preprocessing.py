@@ -10,7 +10,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransfo
 
 from constants import CATEGORICAL_COLUMNS, NUMERICAL_COLUMNS
 
-def make_feature_preprocessing(outcome, grouping_column=None, missing_indicator=True, categorical_indicator=True, lgbm=False):
+def make_feature_preprocessing(missing_indicator=True, categorical_indicator=True):
     """Make preprocessing for features."""
     if categorical_indicator: 
         preprocessors = [

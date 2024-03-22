@@ -1,5 +1,5 @@
-""" TODO
-This file contains the implementation of the magging estimator.
+""" 
+    This file contains the implementation of the magging estimator.
 """
 
 import copy
