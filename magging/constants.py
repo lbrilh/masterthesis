@@ -61,7 +61,6 @@ LOG_COLUMNS = [
     "alt",
     "ast",
     "bili",
-    "bicar",
     "bnd",
     "bun",
     "cai",
@@ -79,6 +78,7 @@ LOG_COLUMNS = [
     "methb",
     "mg",
     "pco2",
+    "o2sat"
     "ph",
     "phos",
     "plt",

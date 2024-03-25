@@ -110,9 +110,10 @@ for r in range(2, len(datasets)):
                 predictions = []
                 for group in group_combination:
                     if model == 'lasso':
-                        pipeline.named_steps['model'].alpha = results_groups[group][group_combination]['alpha']
+                        pipeline.alpha = results_groups[group][group_combination]['alpha']
                     elif model == 'rf': 
-                        pipeline.set_params(results_groups[group][group_combination]['hyper parameters'])
+                        for key, value in results_groups[group][group_combination]['hyper parameters'].items():
+                            pipeline.set_params(**{key: value})
                     pipeline.fit(Xy_data[group], Xy_data[group]['outcome'])
                     predictions.append(np.array(pipeline.predict(Xy_data[dataset])))
                 if predictions: 
