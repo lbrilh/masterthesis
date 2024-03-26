@@ -133,10 +133,10 @@ for r in range(2, len(datasets)):
                             'mse Magging':  mean_squared_error(Xy_data[dataset]['outcome'], y_pred),
                             'Matrix p.d.': all(np.linalg.eigvals(H) > 0),
                             'mse single groups': [mean_squared_error(Xy_data[dataset]['outcome'], prediction) for prediction in predictions],
-                            'alpha': [results_groups[group][group_combination]['hyper parameters'] for group in group_combination]
+                            'hyper parameters': [results_groups[group][group_combination]['hyper parameters'] for group in group_combination]
                         }
 print('Magging Results: ', magging_results)
 print(pd.DataFrame(magging_results))
-pd.DataFrame(magging_results).to_parquet(f'parquet/{outcome}/magging_results.parquet')
+pd.DataFrame(magging_results).to_parquet(f'parquet/{outcome}/{model}_magging_results.parquet')
 pd.DataFrame(magging_results).to_latex()
 print('Script run successfull')
