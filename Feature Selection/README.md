@@ -1,6 +1,6 @@
-# Feature Selection Repository
+# Feature Selection
 
-This repository contains Python scripts used for feature selection and analysis.
+This folder contains Python scripts used for feature selection and analysis.
 
 ## Overview
 

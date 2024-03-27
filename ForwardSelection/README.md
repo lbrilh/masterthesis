@@ -1,4 +1,4 @@
-## Directory Structure
+# Forward Selection
 
 - `ForwardSelection/`: Contains the main scripts for the feature selection process.
   - `baseline.py`: Implements the baseline model using forward feature selection with Lasso regression. It saves the results and selected hyperparameters.
@@ -8,7 +8,7 @@
 - `Images/`: A directory meant for storing images.
 
 - `baseline_results/`: Intended to store the results from the baseline model as `.parquet` files.
-
+  
 - `dsl_results/`: Intended to store the results from the DSL model as `.parquet` files.
 
 - `preprocessing.py`: Defines the preprocessing steps for handling categorical and numerical data, including imputation, scaling, and encoding.
