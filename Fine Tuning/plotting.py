@@ -24,29 +24,28 @@ def plotting(sources, training_source, pattern=r'*_results.parquet'):
             print('Skip train source in plotting')
         else: 
             plt.figure(figsize=(10, 10))
-            plt.title(f"MSE vs Number of tuning Data Points on {source} with parameter training on {training_source}")
-            plt.xlabel("Number of tuning Points")
-            plt.ylabel("MSE")
+            #plt.title(f"MSE vs Number of tuning Data Points on {source} with parameter training on {training_source}")
+            plt.xlabel("Number of fine-tuning points", fontsize=16)
+            plt.ylabel("MSE", fontsize=16)
             for file in file_paths: 
                 _data=load_data_plotting(path=file)
                 df = pd.DataFrame(_data)
                 if 'tuning' not in file:
                     if 'grid' in file:
                         if 'ols' not in file: 
-                            parts=file.split('parquet/')
-                            parts2=parts[1].split('_results')
                             if 'rf' in file:
                                 df=df[lambda x: x['target'].eq(source)]
-                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='purple', label=parts2[0], linewidth=2) 
+                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='purple', label='RF Grid', linewidth=3) 
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
                             if 'lgbm' in file:
                                 df=df[lambda x: x['target'].eq(source)]
-                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='red', label=parts2[0], linewidth=2) 
+                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='red', label='GBDT Grid', linewidth=3) 
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
                             if 'ridge' in file:
                                 df=df[lambda x: x['target'].eq(source)]
-                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='brown', label=parts2[0], linewidth=2) 
+                                plt.axhline(y=df['MSE'].iloc[0], linestyle = '--', color='brown', label='Ridge Grid', linewidth=3)
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600]) 
                     else: 
-                        parts=file.split('parquet/')
-                        parts2=parts[1].split('_results')
                         group_columns = ["target", "n_test", "sample_seed"]
                         if 'refit' in file:
                             metric='mse target'
@@ -58,9 +57,36 @@ def plotting(sources, training_source, pattern=r'*_results.parquet'):
                         df = df.drop(columns=f"{metric}_min")
                         df.sort_values(group_columns,inplace=True)
                         df=df[lambda x: x['target'].eq(source)].groupby('n_test')['mse target'].mean().sort_index().reset_index()
-                        plt.plot(df['n_test'], df['mse target'], '-o', label=parts2[0], linewidth=2)
+                        if 'rf' in file:
+                                plt.plot(df['n_test'], df['mse target'], '-o', label='RF', linewidth=3)
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
+                        if 'lgbm' in file:
+                            if 'refit' in file: 
+                                plt.plot(df['n_test'], df['mse target'], '-o', label='RefitLGBM', linewidth=3)
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
+                            elif 'anchor' not in file:
+                                plt.plot(df['n_test'], df['mse target'], '-o', label='GBDT', linewidth=3)
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
+                        if 'ridge' in file:
+                            plt.plot(df['n_test'], df['mse target'], '-o', label='Ridge', linewidth=3)
+                            plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
+                        if 'anchor' in file:
+                            if 'lgbm' in file: 
+                                plt.plot(df['n_test'], df['mse target'], '-o', label='AnchorBoost', linewidth=3)
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
+                            else:
+                                plt.plot(df['n_test'], df['mse target'], '-o', label='Anchor', linewidth=3)
+                                plt.xticks(ticks=[25, 50, 100, 200, 400, 800, 1600])
                     plt.xscale('log')
-                plt.legend()
+                plt.xticks(fontsize=15, size=15)
+                plt.tick_params(axis='x', bottom=False, which='both',  labelbottom=False)
+                plt.yticks(fontsize=15, size=15)
+                plt.tick_params(axis='y', width=0)
+                ax = plt.gca()
+                for spine in ax.spines.values():
+                    spine.set_linewidth(2)
+                if source != 'mimic':
+                    plt.legend(fontsize=16)    
             plt.savefig(f'plots/fine_tuning/{training_source} on {source}')
     plt.show()
     print('Script successfully executed')
@@ -96,7 +122,7 @@ def plot_tuning_by_gamma(sources, training_source, n_tuning_points):
             for n in n_tuning_points:
                 df=_df[lambda x: x['target'].eq(source) & x['n_test'].eq(n)].groupby(by=['gamma'])[['mse target']].mean().reset_index()
                 print(df)
-                plt.plot(df['gamma'].unique(),df['mse target'], '-o', linewidth=2, label=f'n_test={n}')
+                plt.plot(df['gamma'].unique(),df['mse target'], '-o', linewidth=3, label=f'n_test={n}')
                 plt.xscale('log')
             plt.legend()
             print('New source \n')
