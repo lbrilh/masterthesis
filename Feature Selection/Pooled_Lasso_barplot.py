@@ -15,7 +15,7 @@ import seaborn as sns
 outcome = 'hr'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 
-coefs = pd.read_parquet(f'parquet/{outcome}/Pooled_Lasso_coefs.parquet')
+coefs = pd.read_parquet(f'parquet/{outcome}/Pooled_Lasso_coefs_{outcome}.parquet')
 features = coefs['feature names'].str.split(r'numeric__|categorical__sex_',expand=True)
 
 color_palette = []
@@ -27,8 +27,8 @@ for color_indice in coefs['color']: # assign colour corresponding to the color i
 
 plt.figure(figsize=(12,9))
 sns.barplot(x=coefs["abs_coefs"].iloc[:10], y=features[1].iloc[:10], hue=features[1].iloc[:10], orient="h", palette=color_palette[:10], legend=False, alpha=0.5)
-plt.title('Pooled Lasso')
 plt.ylabel('')
-plt.xlabel("Absolute Value of Coefficient")
+plt.tick_params(axis='y', labelsize=16, size=0)
+plt.xlabel("Absolute Value of Coefficient", fontsize=15)
 plt.savefig(f'images/barplots/{outcome}/Pooled_Lasso_coefs_{outcome}.png')
 plt.show()

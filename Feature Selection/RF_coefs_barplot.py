@@ -22,7 +22,7 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'map'
+outcome = 'hr'
 
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 data = load_data_for_prediction(outcome=outcome)
@@ -52,9 +52,11 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
                                         'Feature Names': feature_names})
     feature_importances.sort_values(by='Importance', ascending=False, inplace=True)
     feature_importances = feature_importances.iloc[:10]
-    ax.set_title(source)
     sns.barplot(x=feature_importances['Importance'], y=feature_importances['Feature Names'], orient='h', ax=ax, alpha=0.7)
     ax.set_ylabel("")
+    ax.set_xlabel("Importance", fontsize=15)
+    ax.tick_params(axis='y', labelsize=16, size=0)  
+    ax.set_title(source, fontsize=16)
 plt.tight_layout()
 plt.savefig(f'images/barplots/{outcome}/RF_individual_feature_importances_{outcome}.png')
 plt.show()
@@ -73,7 +75,9 @@ feature_importances = pd.DataFrame({'Importance': model.feature_importances_,
 feature_importances.sort_values(by='Importance', ascending=False, inplace=True)
 feature_importances = feature_importances.iloc[:10]
 sns.barplot(x=feature_importances['Importance'], y=feature_importances['Feature Names'], orient='h', alpha=0.7)
+plt.xlabel("Importance", fontsize=15)
 plt.ylabel("")
+plt.tick_params(axis='y', labelsize=16, size=0)
 plt.tight_layout()
 plt.savefig(f'images/barplots/{outcome}/RF_all_feature_importances_{outcome}.png')
 plt.show()

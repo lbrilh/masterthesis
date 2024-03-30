@@ -62,9 +62,11 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     ax.plot(xx, coefs.T)
     ymin, ymax = ax.get_ylim()
     ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
-    ax.set_xlabel("|coef| / max|coef|")
-    ax.set_ylabel("Coefficients")
-    ax.set_title(f"LASSO Path - {source}")
+    ax.set_xlabel("|coef| / max|coef|", fontsize=15)
+    ax.set_ylabel("Coefficients", fontsize=15)
+    ax.set_title(source, fontsize=16)
+    ax.tick_params(axis='y', labelsize=13, size=0) 
+    ax.tick_params(axis='x', labelsize=13, size=0) 
     ax.axis("tight")
     
     # Identify the indices of the four largest coefficients

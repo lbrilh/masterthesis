@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-outcome = 'map'
+outcome = 'hr'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 coefs = pd.read_parquet(f'parquet/{outcome}/dsl_coefs_{outcome}.parquet')
 
@@ -31,9 +31,10 @@ for i, source in enumerate(datasets):
         else: 
             color_palette.append('r')
     sns.barplot(x=source_coefs["abs_coefs"].iloc[:10], y=source_features[1].iloc[:10], hue=source_features[1].iloc[:10], orient="h", palette=color_palette[:10], legend=False, alpha=0.5, ax=ax)
-    ax.set_xlabel("Absolute Value of Coefficient")
+    ax.set_xlabel("Absolute Value of Coefficient", fontsize=15)
     ax.set_ylabel('')
-    ax.set_title(source)
+    ax.tick_params(axis='y', labelsize=16, size=0)  
+    ax.set_title(source, fontsize=16)
 plt.tight_layout()
 plt.savefig(f'images/barplots/{outcome}/DSL_individual_coefs_{outcome}.png')
 
@@ -49,7 +50,8 @@ for color_indice in shared_coefs['color']: # assign colour corresponding to the 
         color_palette.append('r')
 plt.figure(figsize=(12,9))
 sns.barplot(x=shared_coefs["abs_coefs"].iloc[:10], y=source_features[1].iloc[:10], hue=source_features[1].iloc[:10], orient="h", palette=color_palette[:10], legend=False, alpha=0.5)
-plt.ylabel('Shared Coefficients')
-plt.xlabel("Absolute Value of Coefficient")
+plt.ylabel('Shared Coefficients', fontsize=15)
+plt.tick_params(axis='y', labelsize=16, size=0)
+plt.xlabel("Absolute Value of Coefficient", fontsize=15)
 plt.savefig(f'images/barplots/{outcome}/DSL_shared_coefs_{outcome}.png')
 plt.show()
