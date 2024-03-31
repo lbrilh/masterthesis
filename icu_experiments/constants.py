@@ -49,8 +49,13 @@ NUMERICAL_COLUMNS = [
     "wbc",
     "weight",
 ]
+
+
 CATEGORICAL_COLUMNS = ["sex"]
+
+
 ANCHOR_COLUMNS = ["hospital_id"]  # , "source"]
+
 
 LOG_COLUMNS = [
     "alp",
@@ -85,73 +90,6 @@ LOG_COLUMNS = [
     "wbc",
 ]
 
-LINEAR_COLUMNS = [x for x in NUMERICAL_COLUMNS if x not in LOG_COLUMNS]
-
-SOURCE_COLORS = {
-    "eicu": "black",
-    "mimic": "red",
-    "hirid": "blue",
-    "miiv": "orange",
-    "aumc": "green",
-}
-
-KIDNEY_FUNCTION_DYNAMIC_VARIABLES = [
-    "alb",
-    "alp",
-    "alt",
-    "ast",
-    "be",
-    "bicar",
-    "bili",
-    "bili_dir",
-    "bnd",
-    "bun",
-    "ca",
-    "cai",
-    "ck",
-    "ckmb",
-    "cl",
-    "crea",
-    "crp",
-    "dbp",
-    "fgn",
-    "fio2",
-    "glu",
-    "hgb",
-    "hr",
-    "inr_pt",
-    "k",
-    "lact",
-    "lymph",
-    "map",
-    "mch",
-    "mchc",
-    "mcv",
-    "methb",
-    "mg",
-    "na",
-    "neut",
-    "o2sat",
-    "pco2",
-    "ph",
-    "phos",
-    "plt",
-    "po2",
-    "ptt",
-    "resp",
-    "sbp",
-    "temp",
-    "tnt",
-    "urine",
-    "wbc",
-]
-
-KIDNEY_FUNCTION_STATIC_VARIABLES = [
-    "age",
-    "sex",
-    "height",
-    "weight",
-]
 
 LIST_COLUMNS = ["caregiver", "provider", "adm_caregiver", "adm_provider"]
 

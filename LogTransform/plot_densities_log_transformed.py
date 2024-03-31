@@ -66,25 +66,6 @@ def main(x_offset):  # noqa D
 
             ax.legend()
 
-    # for col, ax in zip(
-    #     CATEGORICAL_COLUMNS,
-    #     axes.flat[
-    #         len(NUMERICAL_COLUMNS) : len(NUMERICAL_COLUMNS) + len(CATEGORICAL_COLUMNS)
-    #     ],
-    # ):
-    #     for source in SOURCES:
-    #         density = Xy[lambda x: x["source"] == source][col].value_counts(
-    #             normalize=True
-    #         )
-    #         ax.bar(
-    #             density.index,
-    #             density,
-    #             label=f"{source} ({100 * Xy[lambda x: x['source'] == source][col].isna().mean():.0f}%)",
-    #             color=SOURCE_COLORS[source],
-    #         )
-    #         ax.set_title(col)
-    #         ax.legend()
-
     fig.savefig(f"plots/density_plots/{x_offset}.png")
     plt.close(fig)
 

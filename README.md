@@ -28,8 +28,12 @@ A detailed overview of the files contained in each folder can be found in the fo
 
 ### Usage
 
-Before utilizing the scripts, please download the datasets using `ricu` (https://eth-mds.github.io/ricu/) and store them as Parquet files in a folder (in the same directory as this README.md) like this: `data/processed/source_name` (c.f. DATA_PATH in icu_experiments/load_data.py).
+Before running the scripts in the folders, please download the datasets using `ricu` (https://eth-mds.github.io/ricu/) and store them as Parquet files in a folder (in the same directory as this README.md), i.e. `data/processed/source_name` (c.f. DATA_PATH in icu_experiments/load_data.py).
 
-Please install the corresponding environment using the `environment.yml` file.
+Please install the corresponding Python environment using the `environment.yml` file. 
 
 The datasets used in this work (eICU, HiRID, MIMIC-III, and MIMIC-IV) can be downloaded from [PhysioNet](https://physionet.org/).
+
+#### Run Python jobs
+Navigate to the directory of the chosen file.
+Run: python chosen_file.py
