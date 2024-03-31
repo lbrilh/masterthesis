@@ -22,7 +22,7 @@ from preprocessing import make_feature_preprocessing
 from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 
-outcome = 'map'
+outcome = 'hr'
 method = 'lasso'
 
 data = load_data_for_prediction(outcome=outcome)
@@ -36,9 +36,8 @@ Preprocessor = ColumnTransformer(
 fig, axs = plt.subplots(2,2, figsize=(15,9))
 for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']): 
     if source == 'all': 
-        fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
         plt.tight_layout()  # Adjust the layout
-        plt.savefig(f"images/Lasso/{source}_lasso_path_incl_sex")
+        plt.savefig(f"images/lasso profiles/{outcome}/Individual_Lasso_coef_path_{outcome}.png")
         plt.show()
         plt.close()
         fig, ax = plt.subplots(figsize=(15,9))
@@ -62,62 +61,26 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid', 'all']):
     ax.plot(xx, coefs.T)
     ymin, ymax = ax.get_ylim()
     ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
-    ax.set_xlabel("|coef| / max|coef|", fontsize=15)
-    ax.set_ylabel("Coefficients", fontsize=15)
-    ax.set_title(source, fontsize=16)
-    ax.tick_params(axis='y', labelsize=13, size=0) 
-    ax.tick_params(axis='x', labelsize=13, size=0) 
+    if source != 'all':
+        ax.set_title(source, fontsize=16)
+    if source == 'mimic':
+        ax.set_yticks(ticks=[-4, -2, 0, 2, 4, 6, 8, 10, 12, 14])
+    if source == 'all':
+        ax.set_xlabel("|coef| / max|coef|", fontsize=20)
+        ax.set_ylabel("Coefficients", fontsize=20)
+        ax.tick_params(axis='y', labelsize=18, size=0) 
+        ax.tick_params(axis='x', labelsize=18, size=0) 
+    else: 
+        ax.set_xlabel("|coef| / max|coef|", fontsize=15)
+        ax.set_ylabel("Coefficients", fontsize=15)
+        ax.tick_params(axis='y', labelsize=13, size=0) 
+        ax.tick_params(axis='x', labelsize=13, size=0) 
     ax.axis("tight")
-    
-    # Identify the indices of the four largest coefficients
-    if source == 'eicu':    
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
-    elif source == 'hirid':
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
-    else:
-        feature_indices = np.argsort(np.abs(coefs[:, -1]))[-4:]
 
-    print(f'Four most important features on {source}: {[list(_Xtrain.columns)[i] for i in np.argsort(np.abs(coefs[:, -1]))[-6:]]}')
-
-    feature_names = [list(_Xtrain.columns)[i] for i in feature_indices]
+    print(f'Five most important features on {source}: {[list(_Xtrain.columns)[i] for i in np.argsort(np.abs(coefs[:, -1]))[-6:]]}')
+    print()
 
     xmax = max(xx)
-    
-    # Add feature names to plot
-    for i, feature_index in enumerate(feature_indices):
-        y_pos = coefs[feature_index, -1]
-        if source == 'hirid':
-            if feature_names[i] == "categorical__sex_Male":
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, -5), 
-                        textcoords="offset points", ha='left', va='center')
-            elif feature_names[i] == "categorical__sex_Female":
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, +5), 
-                        textcoords="offset points", ha='left', va='center')
-            else:
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 0), 
-                        textcoords="offset points", ha='left', va='center')
-        elif source == 'all':
-            if feature_names[i] == "categorical__sex_Male":
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, +3), 
-                        textcoords="offset points", ha='left', va='center')
-            elif feature_names[i] == "categorical__sex_Female":
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, -3), 
-                        textcoords="offset points", ha='left', va='center')
-            else:
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 0), 
-                        textcoords="offset points", ha='left', va='center')
-        else:
-            if feature_names[i] == "categorical__sex_Male":
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 5), 
-                        textcoords="offset points", ha='left', va='center')
-            elif feature_names[i] == "categorical__sex_Female":
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, -5), 
-                        textcoords="offset points", ha='left', va='center')
-            else:
-                ax.annotate(feature_names[i], xy=(xmax, y_pos), xytext=(5, 0), 
-                        textcoords="offset points", ha='left', va='center')
 
-fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
-plt.savefig("images/Lasso/data_sources_lasso_path_incl_sex.png")
-plt.show()
+plt.savefig(f"images/lasso profiles/{outcome}/Pooled_Lasso_coef_path_{outcome}.png")

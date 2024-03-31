@@ -105,13 +105,14 @@ feature_indices = np.argsort(np.abs(coefs_shared[:, -1]))[-4:]
 feature_names = [list(X_train_augmented.columns)[i] for i in feature_indices]
 xmax = max(xx)
 print('common effects: ', feature_names)
+print()
 ax.plot(xx, coefs_shared.T)
 ymin, ymax = ax.get_ylim()
 ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
-ax.set_xlabel("|coef| / max|coef|", fontsize=15)
-ax.set_ylabel("Coefficients", fontsize=15)
-ax.tick_params(axis='y', labelsize=13, size=0) 
-ax.tick_params(axis='x', labelsize=13, size=0)  
+ax.set_xlabel("|coef| / max|coef|", fontsize=20)
+ax.set_ylabel("Coefficients", fontsize=20)
+ax.tick_params(axis='y', labelsize=18, size=0) 
+ax.tick_params(axis='x', labelsize=18, size=0)  
 ax.axis("tight")
 plt.tight_layout()  # Adjust the layout
 plt.savefig(f'images/lasso profiles/{outcome}/{outcome}_common_effects_DSL_preprocessed_individ.png')
@@ -138,7 +139,6 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     ax.tick_params(axis='x', labelsize=13, size=0)  
     ax.axis("tight")
     ax.set_title(source, fontsize=16)
-fig.suptitle(f"Target: {outcome}", fontweight='bold', fontsize=15)
 plt.tight_layout()  # Adjust the layout
 plt.savefig(f'images/lasso profiles/{outcome}/{outcome}_individual_groups_DSL_preprocessed_individ.png')
 plt.show()
