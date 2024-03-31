@@ -29,7 +29,7 @@ class AnchorMixin(KClassMixin):
 
 
 class AnchorRegression(AnchorMixin, GeneralizedLinearRegressor):
-    """
+    """d
     Linear regression with anchor regularization :cite:p:`rothenhausler2021anchor`.
 
     The anchor regression estimator with parameter :math:`\\gamma` is defined as
