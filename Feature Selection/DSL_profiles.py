@@ -22,7 +22,7 @@ from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 from preprocessing import make_feature_preprocessing
 
-outcome = 'hr'
+outcome = 'map'
 method = 'lasso'
 
 data = load_data_for_prediction(outcome=outcome)

@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-outcome = 'hr'
+outcome = 'map'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
 
 coefs = pd.read_parquet(f'parquet/{outcome}/Pooled_Lasso_coefs_{outcome}.parquet')
