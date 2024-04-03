@@ -8,13 +8,13 @@ This repository is structured as follows:
 
 - **DataLoadingRicu**: This folder contains the R script used to load the datasets and process the concepts using the R ricu package. This folder corresponds to Chatper 2.1 (Datasets) and Chapter 2.2 (Study population).
 
-- **Feature Selection**: This folder contains scripts for comparing feature selection methods to determine which ones enhance the distinguishability between shared effects across datasets and dataset-specific coefficients. This folder corresponds to Chapter 5.4 (Data Identification).
+- **Feature Selection**: This folder contains scripts for comparing feature selection methods to determine which ones enhance the distinguishability between shared effects across datasets and dataset-specific coefficients. This folder corresponds to Chapter 5.5 (Data Identification).
   
 - **Fine Tuning**: This folder contains scripts to employ a fine-tuning approach using a subset of test data for hyperparameter selection. It includes implementations of custom models like LGBM Boosted Anchor and refitted Random Forest. This folder corresponds to Chapter 3 (Fine-tuning approach). 
   
 - **Forward Selection**: This folder includes the implementation of Stepwise Regression for Data Shared Lasso and its robustness on test data, as a function of the degree of sharing parameter and regularization strength. This folder corresponds to Chapter 6 (Forward Selection). It also contains the application of DSL to ICU data (c.f. Chapter 5.3).
 
-- **Magging**: Here, you'll find implementation of Magging. It includes a comparison of Magging and Data Shared Lasso on artificial test data. This folder corresponds to Chapter 4 (Magging) and Chapter 5.5 (DSL vs. Magging). 
+- **Magging**: Here, you'll find implementation of Magging. It includes a comparison of Magging and Data Shared Lasso on artificial test data. This folder corresponds to Chapter 4 (Magging) and Chapter 5.4 (DSL and Magging applied on artificial data). 
 
 - **LogTransform**: This folder contains the scripts to generate the histograms of the predictors and the log-transformed densities. This folder corresponds to Chapter 2.3 (Features and preprocessing).
 
