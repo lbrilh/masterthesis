@@ -22,7 +22,7 @@ from constants import CATEGORICAL_COLUMNS
 from icu_experiments.load_data import load_data_for_prediction
 from preprocessing import make_feature_preprocessing
 
-outcome = 'map'
+outcome = 'hr'
 method = 'lasso'
 
 data = load_data_for_prediction(outcome=outcome)
@@ -118,6 +118,8 @@ plt.tight_layout()  # Adjust the layout
 plt.savefig(f'images/lasso profiles/{outcome}/{outcome}_common_effects_DSL_preprocessed_individ.png')
 plt.show()
 
+
+r_g = {'eicu': 1.41, 'hirid': 4.17, 'mimic': 2.22, 'miiv': 2.05}
 # Print and plot Lasso path of group effects against shrinkage factor
 fig, axs = plt.subplots(2, 2, figsize=(15,9))
 for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']): 
@@ -130,7 +132,7 @@ for i, source in enumerate(['eicu', 'mimic', 'miiv', 'hirid']):
     feature_names = [list(X_train_augmented.iloc[:, (1+i)*51:(2+i)*51].columns)[j] for j in feature_indices]
     xmax = max(xx)
     print(f'{source} effects: ', feature_names)
-    ax.plot(xx, _coefs.T)
+    ax.plot(xx, r_g[source]*_coefs.T)
     ymin, ymax = ax.get_ylim()
     ax.vlines(xx, ymin, ymax, linestyle="dashed", alpha=0.1)
     ax.set_xlabel("|coef| / max|coef|", fontsize=15)

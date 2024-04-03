@@ -14,6 +14,7 @@ import seaborn as sns
 
 outcome = 'hr'
 datasets = ['eicu', 'mimic', 'miiv', 'hirid']
+r_g = {'eicu': 1.41, 'hirid': 4.17, 'mimic': 2.22, 'miiv': 2.05}
 coefs = pd.read_parquet(f'parquet/{outcome}/dsl_coefs_{outcome}.parquet')
 
 # Figure containing barplot for each group specific coefficients order by absolute magnitude and colour indicates sign 
@@ -30,7 +31,7 @@ for i, source in enumerate(datasets):
             color_palette.append('b')
         else: 
             color_palette.append('r')
-    sns.barplot(x=source_coefs["abs_coefs"].iloc[:10], y=source_features[1].iloc[:10], hue=source_features[1].iloc[:10], orient="h", palette=color_palette[:10], legend=False, alpha=0.5, ax=ax)
+    sns.barplot(x=r_g[source]*source_coefs["abs_coefs"].iloc[:10], y=source_features[1].iloc[:10], hue=source_features[1].iloc[:10], orient="h", palette=color_palette[:10], legend=False, alpha=0.5, ax=ax)
     ax.set_xlabel("Absolute Value of Coefficient", fontsize=15)
     ax.set_ylabel('')
     ax.tick_params(axis='y', labelsize=16, size=0)  
